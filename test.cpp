@@ -22,6 +22,7 @@
 #include <android/hardware_buffer.h>
 
 #include "handycpp/file.h"
+#include "handycpp/image.h"
 
 #include <cstdio>
 #define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
@@ -319,7 +320,7 @@ int main() {
     if (buf == nullptr) {
         FUN_DEBUG("nullptr");
     }
-    handycpp::file::saveFile((char *)buf.get(), VIEW_PORT_WIDTH * VIEW_PORT_HEIGHT * 4, "/data/1.rgba");
+    handycpp::image::writeBmp("/data/1.bmp", (unsigned char *)buf.get(), VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, 4);
 #else
     remove("/data/1.rgba");
     void *out = malloc(VIEW_PORT_HEIGHT * VIEW_PORT_WIDTH * 4);
@@ -328,7 +329,7 @@ int main() {
     if (err != GL_NO_ERROR) {
         FUN_ERROR("failed 0x%04X", err);
     }
-    handycpp::file::saveFile((char *)out, VIEW_PORT_WIDTH * VIEW_PORT_HEIGHT * 4, "/data/1.rgba");
+    handycpp::image::writeBmp("/data/1.bmp", (unsigned char *)out, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, 4);
 #endif
 
     fini();

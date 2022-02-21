@@ -9,7 +9,6 @@ ExternalProject_Add(handycpp
         GIT_TAG main
         SOURCE_DIR "${CMAKE_BINARY_DIR}/handycpp/src"
         BINARY_DIR "${CMAKE_BINARY_DIR}/handycpp/build"
-        CONFIGURE_COMMAND "ls"
         BUILD_COMMAND ""
         INSTALL_COMMAND ""
         TEST_COMMAND ""
