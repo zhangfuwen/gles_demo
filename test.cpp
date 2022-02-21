@@ -24,6 +24,8 @@
 #include "handycpp/file.h"
 #include "handycpp/image.h"
 
+#include "happly.h"
+
 #include <cstdio>
 #define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 #include <android/log.h>
@@ -50,7 +52,7 @@ const char vertex_shader_fix[] = "attribute vec4 a_Position;\n"
 
 const char fragment_shader_simple[] = "precision mediump float;\n"
                                       "void main(){\n"
-                                      "	gl_FragColor = vec4(0.0,1.0,0.0,1.0);\n"
+                                      "	gl_FragColor = vec4(1.0,1.0,0.0,1.0);\n"
                                       "}\n";
 
 const float tableVerticesWithTriangles[] = {
@@ -183,11 +185,11 @@ bool compileShader(GLuint shader) {
 void prepare() {
     const char *vertex_shader = vertex_shader_fix;
     const char *fragment_shader = fragment_shader_simple;
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+//    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glClearColor(0.0, 0.0, 0.0, 0.0);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
+//    glEnable(GL_DEPTH_TEST);
+//    glDepthFunc(GL_LESS);
+//    glCullFace(GL_BACK);
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertex_shader, NULL);
     if (!compileShader(vertexShader)) {
@@ -210,7 +212,7 @@ void prepare() {
 void draw() {
     glUseProgram(program);
     glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
-    glClearColor(1.0, 0, 0, 0);
+    glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     GLuint aPositionLocation = glGetAttribLocation(program, "a_Position");
@@ -219,7 +221,80 @@ void draw() {
 
     // draw something
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    //    eglSwapBuffers(eglDisp, eglSurface);
+    glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    eglSwapBuffers(eglDisp, eglSurface);
+}
+
+void drawBunny() {
+    glUseProgram(program);
+    glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Construct the data object by reading from file
+    happly::PLYData plyIn("/data/bun_zipper.ply");
+
+    // Get mesh-style data from the object
+    std::vector<std::array<double, 3>> vPos = plyIn.getVertexPositions();
+    std::vector<std::vector<size_t>> fInd = plyIn.getFaceIndices<size_t>();
+    FUN_INFO("fInd.size %d", fInd.size());
+//    for(int i = 0; i< fInd.size();i++) {
+//        FUN_INFO("fInd[i].size %d", fInd[i].size());
+//    }
+
+    std::vector<std::array<int, 3>> fIndInt(fInd.size());
+    for(int i = 0; i< fInd.size();i++) {
+        fIndInt[i][0] = fInd[i][0];
+        fIndInt[i][1] = fInd[i][1];
+        fIndInt[i][2] = fInd[i][2];
+    }
+
+
+    std::vector<std::array<float, 3>> vPosFloat(vPos.size());
+    for(int i = 0; i< vPos.size();i++) {
+        vPosFloat[i][0] = vPos[i][0];
+        vPosFloat[i][1] = vPos[i][1];
+        vPosFloat[i][2] = vPos[i][2];
+    }
+
+    unsigned int VAO;
+    glGenVertexArrays(1, &VAO);
+
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vPosFloat.size()*3*sizeof(float), &vPosFloat[0][0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, fIndInt.size()*3*sizeof(int), &fIndInt[0][0] , GL_STATIC_DRAW);
+
+    GLuint aPositionLocation = glGetAttribLocation(program, "a_Position");
+    FUN_INFO("aPosition %d", aPositionLocation);
+    glBindVertexArray(VAO);
+
+    glVertexAttribPointer(aPositionLocation, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(aPositionLocation);
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, fIndInt.size()*3, GL_UNSIGNED_INT, 0);
+
+    // draw something
+    glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    auto err = glGetError();
+    if (err != GL_NO_ERROR) {
+        FUN_ERROR("failed 0x%04X", err);
+    }
+    glDrawElements(GL_TRIANGLE_STRIP, fInd.size(), GL_UNSIGNED_INT, fIndInt.data());
+    glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    glBindVertexArray(0);
+
+    vPosFloat[0][0] = 0;
+    fIndInt[0][0] = 0;
+//    eglSwapBuffers(eglDisp, eglSurface);
 }
 
 void fini() {
@@ -245,7 +320,7 @@ AHardwareBuffer *allocAHardwareBuffer(uint32_t w, uint32_t h) {
     return hardwareBuffer;
 }
 
-std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int32_t fence = -1) {
+std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int &stride, int32_t fence = -1) {
     void *ptr;
     int ret = AHardwareBuffer_lock(buf, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, fence, nullptr, &ptr);
     if (ret != 0) {
@@ -254,9 +329,10 @@ std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int32_t fence 
     }
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(buf, &desc);
+    stride = desc.stride;
 
-    auto res = std::make_unique<char[]>(desc.width * desc.height * 4);
-    memcpy(res.get(), ptr, desc.width * desc.height * 4);
+    auto res = std::make_unique<char[]>(stride * desc.height * 4);
+    memcpy(res.get(), ptr, stride * desc.height * 4);
     LOGI("width:%d, height:%d, stride %d", desc.width, desc.height, desc.stride);
     AHardwareBuffer_unlock(buf, nullptr);
     return res;
@@ -304,33 +380,30 @@ int main() {
         FUN_ERROR("framebuffer incomplete");
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     gettimeofday(&t1, nullptr);
-    for (int i = 0; i < 1000; i++) {
-        draw();
-    }
+    drawBunny();
     glFinish();
     gettimeofday(&t2, nullptr);
-    LOGI("draw time used: %ld us", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
-    FUN_DEBUG("hardwarebuffer %p", hardwareBuffer);
+    LOGI("draw time(fbo 0) used: %ld us", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+    void *out = malloc(VIEW_PORT_HEIGHT * VIEW_PORT_WIDTH * 4);
+    glReadPixels(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, out);
+    handycpp::image::writeBmp("/data/1.bmp", (unsigned char *)out, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, 4);
 
-#if 1
-    remove("/data/1.rgba");
-    auto buf = readAhardwareBuffer(hardwareBuffer);
+    // draw on ahardwarebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    gettimeofday(&t1, nullptr);
+    drawBunny();
+    glFinish();
+    gettimeofday(&t2, nullptr);
+    LOGI("draw time(ahardwarebuffer) used: %ld us", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+
+    int stride;
+    auto buf = readAhardwareBuffer(hardwareBuffer, stride);
     if (buf == nullptr) {
         FUN_DEBUG("nullptr");
     }
-    handycpp::image::writeBmp("/data/1.bmp", (unsigned char *)buf.get(), VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, 4);
-#else
-    remove("/data/1.rgba");
-    void *out = malloc(VIEW_PORT_HEIGHT * VIEW_PORT_WIDTH * 4);
-    glReadPixels(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, out);
-    auto err = glGetError();
-    if (err != GL_NO_ERROR) {
-        FUN_ERROR("failed 0x%04X", err);
-    }
-    handycpp::image::writeBmp("/data/1.bmp", (unsigned char *)out, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, 4);
-#endif
+    handycpp::image::writeBmp("/data/2.bmp", (unsigned char *)buf.get(), stride, VIEW_PORT_HEIGHT, 4);
 
     fini();
 
