@@ -21,12 +21,22 @@
 
 #include <android/hardware_buffer.h>
 
+#include "handycpp/file.h"
+
 #include <cstdio>
-#define LOGI(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 #include <android/log.h>
+#include <ctime>
+#include <memory>
+#include <vector>
+
+#define LOGE LOGI
+
+#define VIEW_PORT_WIDTH 1921
+#define VIEW_PORT_HEIGHT 1081
 
 #define LOG_TAG "offscreen"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+//#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 static EGLConfig eglConf;
 static EGLSurface eglSurface;
@@ -87,7 +97,7 @@ void init() {
         EGL_NONE};
     // surface attributes
     // the surface size is set to the input frame size
-    const EGLint surfaceAttr[] = {EGL_WIDTH, 512, EGL_HEIGHT, 512, EGL_NONE};
+    const EGLint surfaceAttr[] = {EGL_WIDTH, VIEW_PORT_WIDTH, EGL_HEIGHT, VIEW_PORT_HEIGHT, EGL_NONE};
     EGLint eglMajVers, eglMinVers;
     EGLint numConfigs;
 
@@ -145,7 +155,31 @@ void init() {
     LOGI("initialize success!");
 }
 
-void draw() {
+GLuint program;
+
+AHardwareBuffer *allocAHardwareBuffer();
+
+bool compileShader(GLuint shader) {
+    glCompileShader(shader);
+    GLint isCompiled = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+    if (isCompiled == GL_FALSE) {
+        GLint maxLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(maxLength);
+        glGetShaderInfoLog(shader, maxLength, &maxLength, &errorLog[0]);
+
+        // Provide the infolog in whatever manor you deem best.
+        // Exit with failure.
+        glDeleteShader(shader); // Don't leak the shader.
+        return false;
+    }
+    return true;
+}
+
+void prepare() {
     const char *vertex_shader = vertex_shader_fix;
     const char *fragment_shader = fragment_shader_simple;
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -153,25 +187,38 @@ void draw() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glCullFace(GL_BACK);
-    glViewport(0, 0, 512, 512);
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertex_shader, NULL);
-    glCompileShader(vertexShader);
+    if (!compileShader(vertexShader)) {
+        LOGE("failed to compile shader");
+        return;
+    }
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragment_shader, NULL);
     glCompileShader(fragmentShader);
-    GLuint program = glCreateProgram();
+    if (!compileShader(fragmentShader)) {
+        LOGE("failed to compile shader");
+        return;
+    }
+    program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
+}
+
+void draw() {
     glUseProgram(program);
+    glViewport(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    glClearColor(1.0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     GLuint aPositionLocation = glGetAttribLocation(program, "a_Position");
     glVertexAttribPointer(aPositionLocation, 2, GL_FLOAT, GL_FALSE, 0, tableVerticesWithTriangles);
     glEnableVertexAttribArray(aPositionLocation);
+
     // draw something
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    eglSwapBuffers(eglDisp, eglSurface);
+    //    eglSwapBuffers(eglDisp, eglSurface);
 }
 
 void fini() {
@@ -185,18 +232,40 @@ void fini() {
     eglCtx = EGL_NO_CONTEXT;
 }
 
-int main() {
-    // 1.  runtime get ahardwarebuffer from compositor
+AHardwareBuffer *allocAHardwareBuffer(uint32_t w, uint32_t h) {
     AHardwareBuffer *hardwareBuffer = nullptr;
     AHardwareBuffer_Desc desc = {};
-    desc.width = 2340;
-    desc.height = 2574;
+    desc.width = w;
+    desc.height = h;
     desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
     AHardwareBuffer_allocate(&desc, &hardwareBuffer);
+    return hardwareBuffer;
+}
 
+std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int32_t fence = -1) {
+    void *ptr;
+    int ret = AHardwareBuffer_lock(buf, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, fence, nullptr, &ptr);
+    if (ret != 0) {
+        LOGE("failed, %d", ret);
+        return nullptr;
+    }
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(buf, &desc);
 
+    auto res = std::make_unique<char[]>(desc.width * desc.height * 4);
+    memcpy(res.get(), ptr, desc.width * desc.height * 4);
+    LOGI("width:%d, height:%d, stride %d", desc.width, desc.height, desc.stride);
+    AHardwareBuffer_unlock(buf, nullptr);
+    return res;
+}
+
+int main() {
+    // 1.  runtime get ahardwarebuffer from compositor
+    AHardwareBuffer *hardwareBuffer = allocAHardwareBuffer(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+
+    init();
 
     // 2. unity create texture
     GLuint unity_tex;
@@ -210,11 +279,59 @@ int main() {
     EGLint attrs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE, EGL_NONE, EGL_NONE};
     auto image =
         eglCreateImageKHR(eglGetCurrentDisplay(), EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, native_buffer, attrs);
-    glEGLImageTargetTexStorageEXT(unity_tex, image, nullptr);
+    glEGLImageTargetTexStorageEXT(GL_TEXTURE_2D, image, nullptr);
     // glEGLImageTargetTexStorageEXT replace unity_tex's backing store with
     // native_buffer's, which causes unity_tex's back store freed and orphan'd
 
     // 4. unity render to unity_tex again and again...
+    timeval t1, t2;
+    prepare();
+
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    GLuint renderbuffer = 0;
+    glGenRenderbuffers(1, &renderbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, unity_tex, 0);
+
+    GLenum ret = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (ret != GL_FRAMEBUFFER_COMPLETE) {
+        FUN_ERROR("framebuffer incomplete");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    gettimeofday(&t1, nullptr);
+    for (int i = 0; i < 1000; i++) {
+        draw();
+    }
+    glFinish();
+    gettimeofday(&t2, nullptr);
+    LOGI("draw time used: %ld us", (t2.tv_sec - t1.tv_sec) * 1000000 + t2.tv_usec - t1.tv_usec);
+    FUN_DEBUG("hardwarebuffer %p", hardwareBuffer);
+
+#if 1
+    remove("/data/1.rgba");
+    auto buf = readAhardwareBuffer(hardwareBuffer);
+    if (buf == nullptr) {
+        FUN_DEBUG("nullptr");
+    }
+    handycpp::file::saveFile((char *)buf.get(), VIEW_PORT_WIDTH * VIEW_PORT_HEIGHT * 4, "/data/1.rgba");
+#else
+    remove("/data/1.rgba");
+    void *out = malloc(VIEW_PORT_HEIGHT * VIEW_PORT_WIDTH * 4);
+    glReadPixels(0, 0, VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, out);
+    auto err = glGetError();
+    if (err != GL_NO_ERROR) {
+        FUN_ERROR("failed 0x%04X", err);
+    }
+    handycpp::file::saveFile((char *)out, VIEW_PORT_WIDTH * VIEW_PORT_HEIGHT * 4, "/data/1.rgba");
+#endif
+
+    fini();
 
     return 0;
 }
