@@ -35,6 +35,15 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
     add_dependencies(android_offscreen_test happly)
     target_include_directories(android_offscreen_test PRIVATE ${CMAKE_BINARY_DIR}/handycpp/src/include)
     target_include_directories(android_offscreen_test PRIVATE ${CMAKE_BINARY_DIR}/happly/src)
+
+    add_executable(gputop AndroidGpuTop.cpp)
+    target_include_directories(gputop PRIVATE ${CMAKE_BINARY_DIR}/handycpp/src/include)
+    target_include_directories(gputop PRIVATE ${CMAKE_BINARY_DIR}/happly/src)
+    add_dependencies(gputop handycpp)
+    target_compile_options(gputop PRIVATE -std=c++17)
+    #        target_link_libraries(gputop )
+    target_compile_features(gputop INTERFACE cxx_std_17)
+
 endif ()
 
 
@@ -63,6 +72,14 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
             ${OPENGL_egl_LIBRARY}
             glfw
             )
+
+        add_executable(gputop AndroidGpuTop.cpp)
+        target_include_directories(gputop PRIVATE ${CMAKE_BINARY_DIR}/handycpp/src/include)
+        target_include_directories(gputop PRIVATE ${CMAKE_BINARY_DIR}/happly/src)
+        add_dependencies(gputop handycpp)
+        target_compile_options(gputop PRIVATE -std=c++17)
+#        target_link_libraries(gputop )
+        target_compile_features(gputop INTERFACE cxx_std_17)
 
 endif ()
 
