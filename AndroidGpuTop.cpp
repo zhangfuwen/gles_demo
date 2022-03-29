@@ -14,33 +14,45 @@
 #include "handycpp/time.h"
 #include "handycpp/exec.h"
 
-double to_double(struct timeval a) {
-    auto ret = (double)a.tv_sec + ((double )a.tv_usec /1000000);
+//double to_double(struct timeval a) {
+//    auto ret = (double)a.tv_sec + ((double )a.tv_usec /1000000);
+//    return ret;
+//}
+//
+//struct timeval from_double(double time) {
+//    long sec = time;
+//    return timeval {
+//        .tv_sec = sec,
+//        .tv_usec = (long)((time - sec)*1000000),
+//    };
+//}
+
+int64_t to_usecs(struct timeval a) {
+    auto ret = (int64_t)a.tv_sec * 1000000 + a.tv_usec;
     return ret;
 }
 
-struct timeval from_double(double time) {
-    long sec = time;
+struct timeval from_usecs(int64_t val) {
     return timeval {
-        .tv_sec = sec,
-        .tv_usec = (long)((time - sec)*1000000),
+        .tv_sec = val /1000000,
+        .tv_usec = val % 1000000,
     };
 }
 
 bool operator> (const timeval & a, const timeval &b) {
-    return to_double(a) > to_double(b);
+    return to_usecs(a) > to_usecs(b);
 }
 bool operator< (const timeval & a, const timeval &b) {
-    return to_double(a) < to_double(b);
+    return to_usecs(a) < to_usecs(b);
 }
 
 struct timeval operator-(const struct timeval & a, const struct timeval & b ) {
-    auto diff = to_double(a) - to_double(b);
-    return from_double(diff);
+    auto diff = to_usecs(a) - to_usecs(b);
+    return from_usecs(diff);
 }
 struct timeval operator+(const struct timeval & a, const struct timeval & b ) {
-    auto sum = to_double(a) + to_double(b);
-    return from_double(sum);
+    auto sum = to_usecs(a) + to_usecs(b);
+    return from_usecs(sum);
 }
 
 struct TimeRange {
@@ -201,24 +213,24 @@ public:
     }
     void Print() {
         printf("\033c");
-        std::map<int, long> ctxUsecs;// context id, to usecs
+        std::map<int, int64_t> ctxUsecs;// context id, to usecs
         std::vector<TimeRange> preemptRanges;
-        double totalPreempt = 0;
+        int64_t totalPreempt = 0;
         for(const auto & preempt : preempts) {
             preemptRanges.emplace_back(preempt.timeRange);
-            totalPreempt += to_double(preempt.timeRange.end - preempt.timeRange.start);
+            totalPreempt += to_usecs(preempt.timeRange.end - preempt.timeRange.start);
         }
         for(const auto & record : records) {
             auto p = SearchIntersects(preemptRanges, record.timeRange);
-            auto recordTotal = to_double(record.timeRange.end -record.timeRange.start);
-            if(recordTotal < 0 || recordTotal > 1) {
+            auto recordTotal = to_usecs(record.timeRange.end -record.timeRange.start);
+            if(recordTotal < 0 || recordTotal > 1000000) {
                 FUN_INFO("");
             }
             if(p.first != -1) {
                 for(int i = p.first ; i <= p.second; i++) {
                     auto pre = preemptRanges[i];
                     auto clip = pre.ClipTo(record.timeRange);
-                    auto clipTime = to_double(clip.end - clip.start);
+                    auto clipTime = to_usecs(clip.end - clip.start);
                     recordTotal -= clipTime;
                     if(recordTotal < 0 || recordTotal > 1) {
                         FUN_INFO("");
@@ -229,7 +241,7 @@ public:
             if(!ctxUsecs.count(record.ctx)) {
                 ctxUsecs[record.ctx] = 0;
             }
-            ctxUsecs[record.ctx] += recordTotal * 1000000;
+            ctxUsecs[record.ctx] += recordTotal;
             if(ctxUsecs[record.ctx] < 0 || ctxUsecs[record.ctx] > 1000000) {
                 FUN_INFO("");
             }
@@ -281,20 +293,20 @@ std::optional<Record> retireProcessing(std::string line) {
         r.ctx = 0 + m["ctx"];
         r.ts = 0 + m["ts"];
 
-        auto tick_diff = retire - start;
-        auto timediff = (double )tick_diff / ticksPerSecond;
-        double endTime = (double )sec + (double )usec/1000000;
-        double startTime = endTime - timediff;
-        long  startSec = startTime;
+        int64_t tick_diff = retire - start;
+        int64_t timediff_usecs = tick_diff / (ticksPerSecond/1000000);
+        int64_t endTimeUsecs = sec* 1000000 + usec;
+        int64_t startTimeUsecs = endTimeUsecs - timediff_usecs;
+
         r.timeRange = {
-                .start = from_double(startTime),
+                .start = from_usecs(startTimeUsecs),
                 .end = {
                     .tv_sec = sec,
                     .tv_usec = usec,
                 }
         };
         if(r.timeRange.end < r.timeRange.start) {
-            FUN_INFO("");
+            FUN_INFO("xx");
         }
         return r;
     }
