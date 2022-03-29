@@ -4,6 +4,8 @@
 #include <iostream>
 #include <GLES3/gl32.h>
 #include <handycpp/image.h>
+#include <sys/time.h>
+#include <handycpp/time.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -16,12 +18,28 @@ const unsigned int SCR_HEIGHT = 600;
 #define VIEW_PORT_HEIGHT 600
 
 #include "GLES.h"
+inline int64_t MeasureCyclesPerSecond(int timeout_ms) {
+    int64_t t[2];
+    t[0] = handycpp::time::cycle_clock::Now();
+    handycpp::time::timer timer;
+    timer.setTimeout([&t]() {
+        t[1] = handycpp::time::cycle_clock::Now();
+    }, timeout_ms);
+
+    while(!timer.stopped()) {
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(10ms);
+    }
+    return (t[1] - t[0]) * 1000 / timeout_ms;
+}
 
 int main()
 {
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
+
+    int64_t cyclesPerSec = MeasureCyclesPerSecond(1000);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -55,6 +73,10 @@ int main()
     // -----------
     while (!glfwWindowShouldClose(window))
     {
+        struct timeval t[2];
+        uint64_t c[2];
+        gettimeofday(&t[0], nullptr);
+        c[0] = handycpp::time::cycle_clock::Now();
         // input
         // -----
         processInput(window);
@@ -75,6 +97,24 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        gettimeofday(&t[1], nullptr);
+        c[1] = handycpp::time::cycle_clock::Now();
+
+        FUN_INFO("clock %lu %lu", (c[1]-c[0]) *1000000/cyclesPerSec, ((long long)t[1].tv_sec - t[0].tv_sec)*1000000 + (t[1].tv_usec - t[0].tv_usec));
+
+
+            struct timespec time1 = {0, 0};
+            clock_gettime(CLOCK_REALTIME, &time1);
+            printf("CLOCK_REALTIME: %d, %d\n", time1.tv_sec, time1.tv_nsec);
+            clock_gettime(CLOCK_MONOTONIC, &time1);
+            printf("CLOCK_MONOTONIC: %d, %d\n", time1.tv_sec, time1.tv_nsec);
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+            printf("CLOCK_PROCESS_CPUTIME_ID: %d, %d\n", time1.tv_sec, time1.tv_nsec);
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time1);
+            printf("CLOCK_THREAD_CPUTIME_ID: %d, %d\n", time1.tv_sec, time1.tv_nsec);
+            printf("\n%d\n", time(NULL));
+//            sleep(1);
     }
 
     // optional: de-allocate all resources once they've outlived their purpose:

@@ -25,6 +25,7 @@ struct Record {
     int retire;// ticks
 };
 
+#ifdef ANDROID
 
 void setFileEnabled(std::string Path, bool enabled) {
     using namespace std;
@@ -49,6 +50,8 @@ bool getFileEnabled(std::string Path) {
     FUN_ERROR("error: got (%d)%s for %s", x.size(), x.c_str(), Path.c_str());
     return false;
 }
+
+#endif
 
 struct Top {
 private:
@@ -88,7 +91,7 @@ public:
     }
 };
 
-std::optional<Record> lineProcessing(std::string line) {
+std::optional<Record> retireProcessing(std::string line) {
     using namespace handycpp::string::pipe_operator;
     using namespace handycpp::dyntype::arithmetic;
 
@@ -126,7 +129,7 @@ std::optional<Record> lineProcessing(std::string line) {
 }
 
 
-void ctxPnameProcessing(std::string line, Top & top)
+void submitProcessing(std::string line, Top & top)
 {
     using namespace handycpp::string::pipe_operator;
     using namespace handycpp::dyntype::arithmetic;
@@ -149,12 +152,14 @@ void ctxPnameProcessing(std::string line, Top & top)
 
 
 using namespace std;
+#ifdef ANDROID
 std::array eventFiles = {
         "/sys/kernel/debug/tracing/events/kgsl/adreno_cmdbatch_retired/enable"s,
         "/sys/kernel/debug/tracing/events/kgsl/adreno_cmdbatch_submitted/enable"s,
         "/sys/kernel/debug/tracing/events/kgsl/adreno_preempt_done/enable"s,
         "/sys/kernel/debug/tracing/events/kgsl/adreno_preempt_trigger/enable"s
 };
+#endif
 
 
 
@@ -163,7 +168,11 @@ volatile bool stop = false;
 int main(int argc, char** argv) {
     const flags::args args(argc, argv);
 
+#ifdef ANDROID
     std::string filePath = "/sys/kernel/debug/tracing/trace_pipe";
+#else
+    std::string filePath = "./AndroidGpuTop.log";
+#endif
     const auto res = args.get<std::string>("f");
     if(res.has_value()) {
         filePath = res.value();
@@ -194,6 +203,7 @@ int main(int argc, char** argv) {
     });
 
 
+#ifdef ANDROID
     // backup event status and set enabled
     std::map<std::string, bool> eventFileStatueBackup;
     for(const auto & eventFile : eventFiles) {
@@ -202,6 +212,7 @@ int main(int argc, char** argv) {
         setFileEnabled(eventFile, true);
     }
     setFileEnabled("/sys/kernel/debug/tracing/tracing_on", true);
+#endif
 
     // process lines and print
     using namespace handycpp::string::pipe_operator;
@@ -220,7 +231,7 @@ int main(int argc, char** argv) {
         if(auto x = line | grep("retired:"); x.has_value()) {
             auto rec = lineProcessing(line);
             if(x.has_value() && !rec.has_value()) {
-                FUN_DEBUG("not matching (%d):%s", line.size(), line.c_str());
+//                FUN_DEBUG("not matching (%d):%s", line.size(), line.c_str());
             }
             if(rec.has_value()) {
                 top.AddRecord(rec.value());
@@ -232,6 +243,7 @@ int main(int argc, char** argv) {
     });
     FUN_INFO("parsed lines:%d", numLines);
 
+#ifdef ANDROID
     // restore event status
     for(const auto & [file, enablement] : eventFileStatueBackup) {
         setFileEnabled(file, enablement);
@@ -239,11 +251,13 @@ int main(int argc, char** argv) {
     setFileEnabled("/sys/kernel/debug/tracing/tracing_on", false);
 
     // TODO: delete this
-    for(const auto & [file, enablement] : eventFileStatueBackup) {
-        setFileEnabled(file, true);
-        bool ret = getFileEnabled(file);
-        FUN_INFO("set false: return %d", ret);
-    }
+//    for(const auto & [file, enablement] : eventFileStatueBackup) {
+//        setFileEnabled(file, true);
+//        bool ret = getFileEnabled(file);
+//        FUN_INFO("set false: return %d", ret);
+//    }
+
+#endif
 
     return 0;
 }
