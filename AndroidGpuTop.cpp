@@ -14,6 +14,112 @@
 #include "handycpp/time.h"
 #include "handycpp/exec.h"
 
+double to_double(struct timeval a) {
+    auto ret = (double)a.tv_sec + ((double )a.tv_usec /1000000);
+    return ret;
+}
+
+struct timeval from_double(double time) {
+    long sec = time;
+    return timeval {
+        .tv_sec = sec,
+        .tv_usec = (long)((time - sec)*1000000),
+    };
+}
+
+bool operator> (const timeval & a, const timeval &b) {
+    return to_double(a) > to_double(b);
+}
+bool operator< (const timeval & a, const timeval &b) {
+    return to_double(a) < to_double(b);
+}
+
+struct timeval operator-(const struct timeval & a, const struct timeval & b ) {
+    auto diff = to_double(a) - to_double(b);
+    return from_double(diff);
+}
+struct timeval operator+(const struct timeval & a, const struct timeval & b ) {
+    auto sum = to_double(a) + to_double(b);
+    return from_double(sum);
+}
+
+struct TimeRange {
+    struct timeval start;
+    struct timeval end;
+
+    bool InRange (const struct timeval val) const {
+        return val > start && val < end;
+    }
+
+    bool IntersectWith(TimeRange b) const {
+        return InRange(b.start) || InRange(b.end);
+    }
+
+    struct timeval Substract(TimeRange b) const {
+        if (InRange(b.start)) {
+            if (InRange(b.end)) {
+                return (b.start - start) + (end - b.end);
+            } else {
+                return b.start - start;
+            }
+        } else if (InRange(end)) {
+            return end -b.end;
+        } else {
+            return end -start;
+        }
+
+    }
+
+    struct TimeRange ClipTo(struct TimeRange b) {
+        return { b.start > start ? b.start: start,
+                 b.end < end? b.end: end};
+    }
+};
+
+int SearchFallsInRange(const std::vector<TimeRange> & ranges, int i1, int i2, struct timeval a) {
+    if(ranges.empty()) {
+        return -1;
+    }
+    if(i1 == i2) {
+        if(ranges[i1].InRange(a)) {
+            return i1;
+        } else {
+            return -1;
+        }
+    }
+    int middle = (i1 + i2)/2;
+    if(auto ret = SearchFallsInRange(ranges, i1, middle, a) ; ret != -1) {
+        return ret;
+    }
+    if(auto ret = SearchFallsInRange(ranges, middle+1, i2, a) ; ret != -1) {
+        return ret;
+    }
+    return -1;
+}
+
+std::pair<int, int> SearchIntersects(std::vector<TimeRange> ranges, TimeRange a) { // may have many
+    int i1 = SearchFallsInRange(ranges,0, ranges.size() -1,  a.start);
+    if(i1 == -1) {
+        return { -1, -1};
+    }
+    int i2 = SearchFallsInRange(ranges, i1, ranges.size() -1, a.end);
+    if(i2 == -1) {
+        for(int i = i1; i < ranges.size(); i++) {
+            if(a.end > ranges[i].start) {
+                i2 = i;
+            }
+        }
+        if(i2 >= 0) {
+            return {i1, i2};
+        } else {
+            return { -1, -1};
+        }
+//        return {i1, i1};
+    } else {
+        return {i1, i2};
+    }
+}
+
 struct Record {
     std::string threadName;
     int ctx; // context id
@@ -21,9 +127,16 @@ struct Record {
     int seq;
     int sec;
     int usec;
+    struct TimeRange timeRange;
     int start;// ticks
     int retire;// ticks
 };
+
+
+struct PreemptRecord {
+    struct TimeRange timeRange;
+};
+
 
 #ifdef ANDROID
 
@@ -52,12 +165,14 @@ bool getFileEnabled(std::string Path) {
 }
 
 #endif
+const int ticksPerSecond = 19200000;
 
 struct Top {
 private:
-    const int ticksPerSecond = 19200000;
     int cur_second = 0;
-    std::map<int, int> ctxTicks;// context id, to ticks
+//    std::map<int, int> ctxTicks;// context id, to ticks
+    std::vector<Record> records;
+    std::vector<PreemptRecord> preempts;
 
     std::map<int, std::string> ctxPname;
 
@@ -72,19 +187,58 @@ public:
             Print();
             Reset(record.sec);
         }
-        ctxTicks[record.ctx] += record.retire - record.start;
+//        ctxTicks[record.ctx] += record.retire - record.start;
+        records.emplace_back(record);
+    }
+    void AddPreemptRecord(PreemptRecord preemptRecord) {
+        preempts.emplace_back(preemptRecord);
     }
     void Reset(int newSec) {
         cur_second = newSec;
-        ctxTicks.clear();
+//        ctxTicks.clear();
+        records.clear();
+        preempts.clear();
     }
     void Print() {
         printf("\033c");
-        for(const auto & [ctx, ticks]: ctxTicks) {
+        std::map<int, long> ctxUsecs;// context id, to usecs
+        std::vector<TimeRange> preemptRanges;
+        for(const auto & preempt : preempts) {
+            preemptRanges.emplace_back(preempt.timeRange);
+        }
+        for(const auto & record : records) {
+            auto p = SearchIntersects(preemptRanges, record.timeRange);
+            auto recordTotal = to_double(record.timeRange.end -record.timeRange.start);
+            if(recordTotal < 0 || recordTotal > 1) {
+                FUN_INFO("");
+            }
+            if(p.first != -1) {
+                for(int i = p.first ; i <= p.second; i++) {
+                    auto pre = preemptRanges[i];
+                    auto clip = pre.ClipTo(record.timeRange);
+                    auto clipTime = to_double(clip.end - clip.start);
+                    recordTotal -= clipTime;
+                    if(recordTotal < 0 || recordTotal > 1) {
+                        FUN_INFO("");
+                    }
+                }
+
+            }
+            if(!ctxUsecs.count(record.ctx)) {
+                ctxUsecs[record.ctx] = 0;
+            }
+            ctxUsecs[record.ctx] += recordTotal * 1000000;
+            if(ctxUsecs[record.ctx] < 0 || ctxUsecs[record.ctx] > 1000000) {
+                FUN_INFO("");
+            }
+
+        }
+
+        for(const auto & [ctx, usecs]: ctxUsecs) {
             FUN_INFO("time:%d ctx:(%3d) ticks:(%2.2f%%) name:%s",
                      cur_second,
                      ctx,
-                     ((float)ticks)/ticksPerSecond * 100,
+                     ((float)usecs)/1000000 * 100,
                     ctxPname.count(ctx) ? ctxPname[ctx].c_str():""
             );
         }
@@ -123,6 +277,22 @@ std::optional<Record> retireProcessing(std::string line) {
         r.retire = retire;
         r.ctx = 0 + m["ctx"];
         r.ts = 0 + m["ts"];
+
+        auto tick_diff = retire - start;
+        auto timediff = (double )tick_diff / ticksPerSecond;
+        double endTime = (double )sec + (double )usec/1000000;
+        double startTime = endTime - timediff;
+        long  startSec = startTime;
+        r.timeRange = {
+                .start = from_double(startTime),
+                .end = {
+                    .tv_sec = sec,
+                    .tv_usec = usec,
+                }
+        };
+        if(r.timeRange.end < r.timeRange.start) {
+            FUN_INFO("");
+        }
         return r;
     }
     return std::nullopt;
@@ -145,6 +315,47 @@ void submitProcessing(std::string line, Top & top)
                 top.UpdateCtxPnameMap(0 + kv[1], thread_name);
             }
         }
+    }
+}
+
+int preemptProcessing(std::string line, Top & top)
+{
+    using namespace handycpp::string::pipe_operator;
+    using namespace handycpp::dyntype::arithmetic;
+
+    auto match = line | grep("adreno_preempt_");
+    if(match.has_value()) {
+        auto pname = handycpp::string::trim_copy(line.substr(0, 23));
+        auto time = line.substr(34, 13);
+        auto rest = line.substr(49);
+        auto cmd = rest.substr(0, rest.find_first_of(":"));
+        auto tok2 = time | splitby(".");
+        auto sec = 0 + tok2[0];
+        auto usec = 0 + tok2[1];
+        static long long start_sec;
+        static long long start_usec;
+        if(cmd == "adreno_preempt_trigger") {
+            start_sec = sec;
+            start_usec = usec;
+        } else if (cmd == "adreno_preempt_done") {
+            top.AddPreemptRecord({
+                .timeRange = {
+                    .start = {
+                        .tv_sec = start_sec,
+                        .tv_usec = start_usec,
+                    },
+                    .end = {
+                        .tv_sec = sec,
+                        .tv_usec = usec,
+                    }
+                }
+            });
+
+        }
+
+        return 0;
+    } else {
+        return -1;
     }
 }
 
@@ -223,13 +434,16 @@ int main(int argc, char** argv) {
             FUN_INFO("stopping, line:%d",i );
             return -1;
         }
+        if(auto x = preemptProcessing(line, top); x < 0) {
+            //
+        }
 
         if(auto x = line | grep("adreno_cmdbatch_submitted:"); x.has_value()) {
-            ctxPnameProcessing(line, top);
+            submitProcessing(line, top);
         }
 
         if(auto x = line | grep("retired:"); x.has_value()) {
-            auto rec = lineProcessing(line);
+            auto rec = retireProcessing(line);
             if(x.has_value() && !rec.has_value()) {
 //                FUN_DEBUG("not matching (%d):%s", line.size(), line.c_str());
             }
