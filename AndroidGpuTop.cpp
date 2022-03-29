@@ -203,8 +203,10 @@ public:
         printf("\033c");
         std::map<int, long> ctxUsecs;// context id, to usecs
         std::vector<TimeRange> preemptRanges;
+        double totalPreempt = 0;
         for(const auto & preempt : preempts) {
             preemptRanges.emplace_back(preempt.timeRange);
+            totalPreempt += to_double(preempt.timeRange.end - preempt.timeRange.start);
         }
         for(const auto & record : records) {
             auto p = SearchIntersects(preemptRanges, record.timeRange);
@@ -238,10 +240,11 @@ public:
             FUN_INFO("time:%d ctx:(%3d) ticks:(%2.2f%%) name:%s",
                      cur_second,
                      ctx,
-                     ((float)usecs)/1000000 * 100,
+                     ((double )usecs)/1000000 * 100,
                     ctxPname.count(ctx) ? ctxPname[ctx].c_str():""
             );
         }
+        FUN_INFO("totalPreempt: %2.2f%%, %d", totalPreempt/1000000*100, preemptRanges.size());
     }
 };
 
