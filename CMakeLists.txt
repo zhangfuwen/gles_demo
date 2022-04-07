@@ -15,7 +15,7 @@ ExternalProject_Add(handycpp
         )
 
 ExternalProject_add(happly
-        GIT_REPOSITORY https://github.com/nmwsharp/happly
+        GIT_REPOSITORY  https://github.com/nmwsharp/happly
         GIT_TAG master
         SOURCE_DIR "${CMAKE_BINARY_DIR}/happly/src"
         BINARY_DIR "${CMAKE_BINARY_DIR}/happly/build"
@@ -84,3 +84,5 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
 endif ()
 
 
+
+add_executable(read_pipe read_pipe.cpp)
