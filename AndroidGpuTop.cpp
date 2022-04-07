@@ -14,6 +14,8 @@
 #include "handycpp/time.h"
 #include "handycpp/exec.h"
 
+bool g_textMode = false;
+
 //double to_double(struct timeval a) {
 //    auto ret = (double)a.tv_sec + ((double )a.tv_usec /1000000);
 //    return ret;
@@ -212,7 +214,9 @@ public:
         preempts.clear();
     }
     void Print() {
-        printf("\033c");
+        if(!g_textMode) {
+            printf("\033c");
+        }
         std::map<int, int64_t> ctxUsecs;// context id, to usecs
         std::vector<TimeRange> preemptRanges;
         int64_t totalPreempt = 0;
@@ -388,7 +392,6 @@ std::array eventFiles = {
 #endif
 
 
-
 #include <signal.h>
 volatile bool stop = false;
 int main(int argc, char** argv) {
@@ -399,6 +402,7 @@ int main(int argc, char** argv) {
 #else
     std::string filePath = "./AndroidGpuTop.log";
 #endif
+
     const auto res = args.get<std::string>("f");
     if(res.has_value()) {
         filePath = res.value();
@@ -410,6 +414,8 @@ int main(int argc, char** argv) {
         timeout = to.value();
     }
     FUN_INFO("timeout: %d seconds", timeout);
+
+    g_textMode = args.get<bool>("b").value();
 
     handycpp::time::timer timer;
     using namespace std::chrono_literals;

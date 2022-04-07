@@ -1,0 +1,9 @@
+{
+  "name": "gles-demo",
+  "version-string": "0.1",
+  "dependencies": [
+    "github.com/zhangfuwen/handycpp",
+    "pthreads",
+    "happly"
+  ]
+}
