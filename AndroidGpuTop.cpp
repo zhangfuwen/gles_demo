@@ -415,7 +415,7 @@ int main(int argc, char** argv) {
     }
     FUN_INFO("timeout: %d seconds", timeout);
 
-    g_textMode = args.get<bool>("b").value();
+    g_textMode = args.get<bool>("b").has_value();
 
     handycpp::time::timer timer;
     using namespace std::chrono_literals;
@@ -466,7 +466,7 @@ int main(int argc, char** argv) {
         if(auto x = line | grep("retired:"); x.has_value()) {
             auto rec = retireProcessing(line);
             if(x.has_value() && !rec.has_value()) {
-//                FUN_DEBUG("not matching (%d):%s", line.size(), line.c_str());
+                FUN_DEBUG("not matching (%d):%s", line.size(), line.c_str());
             }
             if(rec.has_value()) {
                 top.AddRecord(rec.value());

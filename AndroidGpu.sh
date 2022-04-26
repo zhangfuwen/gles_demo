@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# screen on/off adb shell input keyevent 26
+
 function enable_tracing() {
   echo "echo 1 > /sys/kernel/debug/tracing/events/kgsl/$1/enable"
   echo 1 > /sys/kernel/debug/tracing/events/kgsl/$1/enable
