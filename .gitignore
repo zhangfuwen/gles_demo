@@ -4,3 +4,4 @@ build-android/*
 build-linux/*
 cmake-build*/*
 .idea/*
+vcpkg_installed/*

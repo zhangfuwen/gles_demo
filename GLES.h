@@ -24,40 +24,49 @@
 //#define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__); fflush(stdout)
 #endif
 
-
 #include <ctime>
 #include <memory>
 #include <vector>
-
 
 #define LOGE(fmt, ...) LOGI("-----------" fmt, ##__VA_ARGS__)
 
 const char vertex_shader_fix[] = "#version 310 es\n"
                                  "layout(location = 1) in vec2 a_Position;\n"
+                                 "uniform mat2 uRotation; \n"
+                                 "out vec3 color; \n"
                                  "void main() {\n"
-                                 "	gl_Position= vec4(a_Position, 0.2f, 1.0f);\n"
+                                 "	gl_Position= vec4(uRotation *a_Position*2.0f, 0.0f, 1.0f);\n"
+                                 "      color = vec3(a_Position, 1.0);\n"
                                  "}\n";
 
 const char fragment_shader_simple[] = "#version 310 es\n"
                                       "precision mediump float;\n"
                                       "out vec4 FragColor;\n"
+                                      "in vec3 color; \n"
                                       "void main(){\n"
-                                      "	  FragColor = vec4(1.0,1.0,0.0,1.0);\n"
+                                      "	  FragColor = vec4(color ,1.0);\n"
                                       "}\n";
 
 const float tableVerticesWithTriangles[] = {
-        // Triangle1
-        -0.5f, -0.5f,
+    // Triangle1
+    -0.5f,
+    -0.5f,
 
-        0.5f, 0.5f,
+    0.5f,
+    0.5f,
 
-        -0.5f, 0.5f,
-        // Triangle2
-        -0.5f, -0.5f,
+    -0.5f,
+    0.5f,
+    // Triangle2
+    -0.5f,
+    -0.5f,
 
-        0.5f, -0.5f,
+    0.5f,
+    -0.5f,
 
-        0.5f, 0.5f,};
+    0.5f,
+    0.5f,
+};
 
 class GLES {
 public:
@@ -68,7 +77,7 @@ public:
         if (ret < 0) {
             return -1;
         }
-        program = (GLuint) ret;
+        program = (GLuint)ret;
         return 0;
     }
 
@@ -81,7 +90,7 @@ public:
         }
 
         GLuint aPositionLocation = glGetAttribLocation(program, "a_Position");
-        LOGI("aPositionLocation %d", aPositionLocation);
+//        LOGI("aPositionLocation %d", aPositionLocation);
         glVertexAttribPointer(aPositionLocation, 2, GL_FLOAT, GL_FALSE, 0, tableVerticesWithTriangles);
         ret = glGetError();
         if (ret != GL_NO_ERROR) {
@@ -94,6 +103,22 @@ public:
             LOGE("failed to enable vertex attribute %d", ret);
             return -1;
         }
+        static float angle = 0.0f;
+        angle += 0.01f;
+        if (angle > M_PI * 2.0f) {
+            angle = 0.0f;
+        }
+//        float rotation[4] = {
+//            cosf(angle),
+//            sinf(angle),
+//            sinf(angle),
+//            cosf(angle),
+//        };
+        float rotation[4] = {
+            1.0f, 0.0f,
+                0.0f, 1.0f,
+        };
+        glUniformMatrix2fv(glGetUniformLocation(program, "uRotation"), 1, false, rotation);
 
         // draw something
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -102,7 +127,7 @@ public:
             LOGE("failed to draw %d", ret);
             return -1;
         }
-        LOGI("draw ok");
+//        LOGI("draw ok");
         return 0;
     }
 
@@ -113,8 +138,11 @@ public:
 
     inline static int GetFramebufferInfo(bool read = true) {
         GLint val = -1;
-        glGetFramebufferAttachmentParameteriv(read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                              GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &val);
+        glGetFramebufferAttachmentParameteriv(
+            read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE,
+            &val);
         auto ret = glGetError();
         if (ret != GL_NO_ERROR) {
             LOGE("failed to get attachment obj type: %d", ret);
@@ -138,16 +166,22 @@ public:
                 break;
         }
 
-        glGetFramebufferAttachmentParameteriv(read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                              GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE, &val);
+        glGetFramebufferAttachmentParameteriv(
+            read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_RED_SIZE,
+            &val);
         ret = glGetError();
         if (ret != GL_NO_ERROR) {
             LOGE("failed to get attachment red size: %d", ret);
             return -1;
         }
         LOGI("red component size: %d", val);
-        glGetFramebufferAttachmentParameteriv(read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                              GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &val);
+        glGetFramebufferAttachmentParameteriv(
+            read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME,
+            &val);
         ret = glGetError();
         if (ret != GL_NO_ERROR) {
             LOGE("failed to get attachment obj name: %d, %s", ret);
@@ -156,7 +190,6 @@ public:
         LOGI("attachment name: %d", val);
         return 0;
     }
-
 
     inline static GLuint compileShader(GLenum type, const char *source) {
         GLint shaderLen = strlen(source);
@@ -171,7 +204,7 @@ public:
         }
         LOGI("created shader");
 
-        glShaderSource(shader, 1, (const GLchar *const *) (&source), &shaderLen);
+        glShaderSource(shader, 1, (const GLchar *const *)(&source), &shaderLen);
         ret = glGetError();
         if (ret != GL_NO_ERROR) {
             LOGE("failed to attach shader source: %d", ret);
@@ -205,7 +238,6 @@ public:
         LOGI("compile ok");
         return shader;
     }
-
 
     inline static int LinkProgram(const char *vshaderSource, const char *fshaderSource) {
         const char *vertex_shader = vshaderSource;
@@ -272,18 +304,16 @@ public:
         return program;
     }
 
-
-/**
- * readPixels from framebuffer to a png file
- * @param filePath png file path
- * @param fbo fbo, default 0
- * @param src fbo source, default GL_BACK, other values maybe GL_COLOR_ATTACHMENTi
- * @param width with of the framebuffer, default 0 causes a framebuffer size query
- * @param height height of the framebuffer, default 0 causes a framebuffer size query
- * @return 0 on success, negative value on failure
- */
+    /**
+     * readPixels from framebuffer to a png file
+     * @param filePath png file path
+     * @param fbo fbo, default 0
+     * @param src fbo source, default GL_BACK, other values maybe GL_COLOR_ATTACHMENTi
+     * @param width with of the framebuffer, default 0 causes a framebuffer size query
+     * @param height height of the framebuffer, default 0 causes a framebuffer size query
+     * @return 0 on success, negative value on failure
+     */
     static int readPixels(const char *filePath, GLuint fbo = 0, GLenum src = GL_BACK, int width = 0, int height = 0);
-
 
     inline static int GLES_CreateFBO(int width, int height) {
         GLuint fbo;
@@ -295,7 +325,6 @@ public:
         glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
-
 
         GLuint unity_tex;
         glGenTextures(1, &unity_tex);
@@ -309,10 +338,8 @@ public:
             LOGE("framebuffer incomplete");
             return -1;
         }
-        return (int) fbo;
+        return (int)fbo;
     }
-
 };
 
-
-#endif //TEST_GLES_H
+#endif // TEST_GLES_H

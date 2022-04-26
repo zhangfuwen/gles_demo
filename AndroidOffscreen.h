@@ -21,16 +21,17 @@
 #include "happly.h"
 
 #include <cstdio>
-#define LOGI(fmt, ...) printf(fmt "\n", ##__VA_ARGS__); fflush(stdout)
+#define LOGI(fmt, ...)                                                                                                 \
+    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
+    fflush(stdout)
 //#define LOGI(fmt, ...) FUN_INFO(fmt, ##__VA_ARGS__)
+#include <GLES2/gl2ext.h>
 #include <android/log.h>
 #include <ctime>
 #include <memory>
 #include <vector>
-#include <GLES2/gl2ext.h>
 
 #define LOGE(fmt, ...) LOGI("-----------" fmt, ##__VA_ARGS__)
-
 
 #define LOG_TAG "offscreen"
 //#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -51,29 +52,29 @@ public:
     int eglInit(int width, int height) {
         // EGL config attributes
         const EGLint confAttr[] = {
-                EGL_RENDERABLE_TYPE,
-                EGL_OPENGL_ES3_BIT, // very important!
-                EGL_SURFACE_TYPE,
-                EGL_PBUFFER_BIT, // EGL_WINDOW_BIT EGL_PBUFFER_BIT we will create a
-                // pixelbuffer surface
-                EGL_RED_SIZE,
-                8,
-                EGL_GREEN_SIZE,
-                8,
-                EGL_BLUE_SIZE,
-                8,
-                EGL_ALPHA_SIZE,
-                8, // if you need the alpha channel
-                EGL_DEPTH_SIZE,
-                8, // if you need the depth buffer
-                EGL_STENCIL_SIZE,
-                8,
-                EGL_NONE};
+            EGL_RENDERABLE_TYPE,
+            EGL_OPENGL_ES3_BIT, // very important!
+            EGL_SURFACE_TYPE,
+            EGL_PBUFFER_BIT, // EGL_WINDOW_BIT EGL_PBUFFER_BIT we will create a
+            // pixelbuffer surface
+            EGL_RED_SIZE,
+            8,
+            EGL_GREEN_SIZE,
+            8,
+            EGL_BLUE_SIZE,
+            8,
+            EGL_ALPHA_SIZE,
+            8, // if you need the alpha channel
+            EGL_DEPTH_SIZE,
+            8, // if you need the depth buffer
+            EGL_STENCIL_SIZE,
+            8,
+            EGL_NONE};
         // EGL context attributes
         const EGLint ctxAttr[] = {
-                EGL_CONTEXT_CLIENT_VERSION,
-                3, // very important!
-                EGL_NONE};
+            EGL_CONTEXT_CLIENT_VERSION,
+            3, // very important!
+            EGL_NONE};
         // surface attributes
         // the surface size is set to the input frame size
         const EGLint surfaceAttr[] = {EGL_WIDTH, width, EGL_HEIGHT, height, EGL_NONE};
@@ -105,21 +106,21 @@ public:
             switch (eglGetError()) {
                 case EGL_BAD_ALLOC:
                     // Not enough resources available. Handle and recover
-                LOGE("Not enough resources available");
+                    LOGE("Not enough resources available");
                     break;
                 case EGL_BAD_CONFIG:
                     // Verify that provided EGLConfig is valid
-                LOGE("provided EGLConfig is invalid");
+                    LOGE("provided EGLConfig is invalid");
                     break;
                 case EGL_BAD_PARAMETER:
                     // Verify that the EGL_WIDTH and EGL_HEIGHT are
                     // non-negative values
-                LOGE("provided EGL_WIDTH and EGL_HEIGHT is invalid");
+                    LOGE("provided EGL_WIDTH and EGL_HEIGHT is invalid");
                     break;
                 case EGL_BAD_MATCH:
                     // Check window and EGLConfig attributes to determine
                     // compatibility and pbuffer-texture parameters
-                LOGE("Check window and EGLConfig attributes");
+                    LOGE("Check window and EGLConfig attributes");
                     break;
             }
         }
@@ -154,9 +155,7 @@ private:
     EGLSurface eglSurface;
     EGLContext eglCtx;
     EGLDisplay eglDisp;
-
 };
-
 
 #if 0
 void drawBunny() {
@@ -224,8 +223,7 @@ void drawBunny() {
 
 class AndroidAhardwareBuffer {
 public:
-
-   static std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int &stride, int32_t fence = -1) {
+    static std::unique_ptr<char[]> readAhardwareBuffer(AHardwareBuffer *buf, int &stride, int32_t fence = -1) {
         void *ptr;
         int ret = AHardwareBuffer_lock(buf, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, fence, nullptr, &ptr);
         if (ret != 0) {
@@ -243,7 +241,7 @@ public:
         return res;
     }
 
-   static AHardwareBuffer *allocAHardwareBuffer(uint32_t w, uint32_t h) {
+    static AHardwareBuffer *allocAHardwareBuffer(uint32_t w, uint32_t h) {
         AHardwareBuffer *hardwareBuffer = nullptr;
         AHardwareBuffer_Desc desc = {};
         desc.width = w;
@@ -258,7 +256,6 @@ public:
     AndroidAhardwareBuffer(int width, int height) {
         hardwareBuffer = allocAHardwareBuffer(width, height);
 
-
         // 2. unity create texture
         glGenTextures(1, &unity_tex);
         glBindTexture(GL_TEXTURE_2D, unity_tex);
@@ -269,20 +266,16 @@ public:
         native_buffer = eglGetNativeClientBufferANDROID(hardwareBuffer);
         EGLint attrs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE, EGL_NONE, EGL_NONE};
         auto image =
-                eglCreateImageKHR(eglGetCurrentDisplay(), EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, native_buffer, attrs);
+            eglCreateImageKHR(eglGetCurrentDisplay(), EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, native_buffer, attrs);
         glEGLImageTargetTexStorageEXT(GL_TEXTURE_2D, image, nullptr);
-   }
-   GLuint GetID() {
-       return unity_tex;
-   }
-   ~AndroidAhardwareBuffer() {
-       glDeleteTextures(1, &unity_tex);
-       AHardwareBuffer_release(hardwareBuffer);
-   }
+    }
+    GLuint GetID() { return unity_tex; }
+    ~AndroidAhardwareBuffer() {
+        glDeleteTextures(1, &unity_tex);
+        AHardwareBuffer_release(hardwareBuffer);
+    }
+
 private:
     GLuint unity_tex;
-    AHardwareBuffer * hardwareBuffer;
-
+    AHardwareBuffer *hardwareBuffer;
 };
-
-
