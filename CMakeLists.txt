@@ -7,7 +7,7 @@ include(ExternalProject)
 
 
 if (CMAKE_SYSTEM_NAME MATCHES Android)
-    add_executable(android_offscreen_test AndroidMain.cpp AndroidOffscreen.h GLES.cpp)
+    add_executable(android_offscreen_test AndroidMain.cpp AndroidOffscreen.h GLES.cpp arm_counters.cpp)
     target_compile_options(android_offscreen_test PRIVATE -std=c++17)
     target_link_libraries(android_offscreen_test EGL GLESv2 GLESv3 android jnigraphics nativewindow log)
     target_compile_features(android_offscreen_test INTERFACE cxx_std_17)

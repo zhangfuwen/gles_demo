@@ -3,6 +3,7 @@
 //
 #include "AndroidOffscreen.h"
 #include "GLES.h"
+#include "arm_counters.h"
 
 #define VIEW_PORT_WIDTH 3712
 #define VIEW_PORT_HEIGHT 3712
@@ -61,21 +62,75 @@ int main() {
         return 0;
     };
 
+    QCOMCounters counters;
+    counters.Init();
+    auto cs = counters.GetPublicCounterIds();
+    for(auto & c : cs) {
+        auto desc = counters.GetCounterDescription(c);
+//        if(desc.name.find("VBIF") != std::string::npos
+//           || desc.category.find("VBIF") != std::string::npos
+//
+//                ||desc.name.find("GBIF") != std::string::npos
+//            || desc.category.find("GBIF") != std::string::npos
+//
+//               ||desc.name.find("UCHE") != std::string::npos
+//               || desc.category.find("UCHE") != std::string::npos
+//
+//               || desc.name.find("AXI") != std::string::npos
+//                  || desc.name.find("AXI") != std::string::npos
+//                     || desc.name.find("TP") != std::string::npos
+//                     || desc.name.find("TP") != std::string::npos
+//                        || desc.name.find("SP") != std::string::npos
+//                        || desc.name.find("SP") != std::string::npos
+//            )  {
+            LOGI("desc name:%s, cat:%s, desc:%s", desc.name.c_str(), desc.category.c_str(), desc.description.c_str());
+            counters.EnableCounter(c);
+//        }
+    }
+
+
+    LOGI("start");
+    counters.BeginPass();
+    LOGI("start");
+
+
+    counters.BeginSample(0);
+    LOGI("start");
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     LOGI("on offscreen");
     render(5000);
+    counters.EndSample();
 
+    counters.BeginSample(1);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     LOGI("on offscreen");
     render(5000);
+    counters.EndSample();
 
+    counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
     LOGI("on ahardwarebuffer");
     render(5000);
+    counters.EndSample();
 
+    counters.BeginSample(3);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex);
     LOGI("on texture");
     render(5000);
+    counters.EndSample();
+
+//    for(int i = 0; i<=3; i++) {
+//        auto res = counters.GetCounterData({(unsigned)i} );
+//        if(i==0) {
+//            for(auto c : res) {
+//                LOGI("%s,", counters.GetCounterDescription(c.counter).name.c_str());
+//            }
+//        }
+//        for(auto c : res) {
+//            LOGI("%d,", c.value.u32);
+//        }
+//
+//    }
 
 
 
