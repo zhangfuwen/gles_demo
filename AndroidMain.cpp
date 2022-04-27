@@ -4,8 +4,8 @@
 #include "AndroidOffscreen.h"
 #include "GLES.h"
 
-#define VIEW_PORT_WIDTH 3750
-#define VIEW_PORT_HEIGHT 1750
+#define VIEW_PORT_WIDTH 3712
+#define VIEW_PORT_HEIGHT 3712
 int main() {
     int width = VIEW_PORT_WIDTH;
     int height = VIEW_PORT_HEIGHT;
@@ -38,7 +38,7 @@ int main() {
         glFinish();
       uint64_t nsec_acum = 0;
       uint64_t usec_acum = 0;
-      for(int i = 0; i < num_frames; i++) {
+      for(int i = 1; i <= num_frames; i++) {
             timespec t1, t2;
             clock_gettime(CLOCK_MONOTONIC, &t1);
 
@@ -51,7 +51,7 @@ int main() {
             clock_gettime(CLOCK_MONOTONIC, &t2);
             uint64_t diff_nsec = (t2.tv_sec - t1.tv_sec)*1000000000 + t2.tv_nsec - t1.tv_nsec;
             nsec_acum += diff_nsec;
-            if(i%100 == 1) {
+            if(i%100 == 0) {
                 LOGI("%d round: time: %llu us", i/100, nsec_acum/1000);
                 usec_acum += nsec_acum / 1000;
                 nsec_acum=0;
@@ -61,17 +61,21 @@ int main() {
         return 0;
     };
 
-//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-//    LOGI("on offscreen");
-//    render(1000000000);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    LOGI("on offscreen");
+    render(5000);
 
-//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-//    LOGI("on ahardwarebuffer");
-//    render(1000000000);
-//
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    LOGI("on offscreen");
+    render(5000);
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    LOGI("on ahardwarebuffer");
+    render(5000);
+
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex);
     LOGI("on texture");
-    render(1000000000);
+    render(5000);
 
 
 

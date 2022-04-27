@@ -18,6 +18,9 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
     #        target_link_libraries(gputop )
     target_compile_features(gputop INTERFACE cxx_std_17)
 
+    add_executable(mem mem.cpp)
+    target_compile_options(mem PRIVATE -std=c++17)
+
 endif ()
 
 
