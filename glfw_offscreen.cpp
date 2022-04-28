@@ -79,7 +79,7 @@ int main(void)
         return ret;
     }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    if(auto ret = GLES::readPixels("1.png", 0, GL_BACK, width, height); ret < 0) {
+    if(auto ret = GLES::ReadPixels("1.png", 0, GL_BACK, width, height); ret < 0) {
         return ret;
     }
 
