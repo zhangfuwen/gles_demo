@@ -16,7 +16,7 @@
 #include <stdio.h>
 
 #include "handycpp/image.h"
-#include "GLES.h"
+#include "../common/GLES.h"
 
 static void error_callback(int error, const char* description)
 {

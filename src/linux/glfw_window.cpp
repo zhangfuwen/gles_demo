@@ -17,7 +17,7 @@ const unsigned int SCR_HEIGHT = 600;
 #define VIEW_PORT_WIDTH 800
 #define VIEW_PORT_HEIGHT 600
 
-#include "GLES.h"
+#include "../common/GLES.h"
 inline int64_t MeasureCyclesPerSecond(int timeout_ms) {
     int64_t t[2];
     t[0] = handycpp::time::cycle_clock::Now();

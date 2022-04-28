@@ -5,53 +5,61 @@ cmake_minimum_required(VERSION 3.1)
 include(ExternalProject)
 
 
+message(WARNING "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME}")
+
+### android ###
 if (CMAKE_SYSTEM_NAME MATCHES Android)
+    # offscreen
     add_executable(android_offscreen_test
-            AndroidMain.cpp
-            EGL.cpp
-            GLES.cpp
-            Android.cpp
-            arm_counters.cpp)
+            src/common/EGL.cpp
+            src/common/GLES.cpp
+            src/android/Android.cpp
+            src/android/AndroidMain.cpp
+            src/android/arm_counters.cpp)
     target_compile_options(android_offscreen_test PRIVATE -std=c++17)
     target_link_libraries(android_offscreen_test EGL GLESv2 GLESv3 android jnigraphics nativewindow log)
     target_compile_features(android_offscreen_test INTERFACE cxx_std_17)
 
 
-    add_executable(gputop AndroidGpuTop.cpp)
+    # gpu top
+    add_executable(gputop src/android/AndroidGpuTop.cpp)
     target_compile_options(gputop PRIVATE -std=c++17)
-    #        target_link_libraries(gputop )
     target_compile_features(gputop INTERFACE cxx_std_17)
 
-    add_executable(mem mem.cpp)
+    # android tools
+    add_executable(read_pipe src/tools/read_pipe.cpp)
+    add_executable(mem src/tools/mem.cpp)
     target_compile_options(mem PRIVATE -std=c++17)
-
 endif ()
 
-
-message(WARNING "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME}")
+### linux ###
 if (CMAKE_SYSTEM_NAME MATCHES Linux)
     find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
-    add_executable(glfw_window glfw_window.cpp GLES.cpp)
+
+    # glfw window
+    add_executable(glfw_window src/linux/glfw_window.cpp src/common/GLES.cpp)
     target_link_libraries(glfw_window PRIVATE
             ${OPENGL_gl_LIBRARY}
             ${OPENGL_egl_LIBRARY}
             glfw
             )
 
-    add_executable(glfw_offscreen glfw_offscreen.cpp GLES.cpp)
+    # glfw offscreen
+    add_executable(glfw_offscreen src/linux/glfw_offscreen.cpp src/common/GLES.cpp)
     target_link_libraries(glfw_offscreen PRIVATE
             ${OPENGL_gl_LIBRARY}
             ${OPENGL_egl_LIBRARY}
             glfw
             )
 
-    add_executable(gputop AndroidGpuTop.cpp)
-
+    # gputop
+    add_executable(gputop src/android/AndroidGpuTop.cpp)
     target_compile_options(gputop PRIVATE -std=c++17)
     target_compile_features(gputop INTERFACE cxx_std_17)
 
 endif ()
+
 
 
 if (VCPKG_TOOLCHAIN MATCHES ON)
@@ -131,4 +139,3 @@ else ()
 
 endif ()
 
-add_executable(read_pipe read_pipe.cpp)

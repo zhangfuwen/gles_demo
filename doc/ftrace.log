@@ -1,0 +1,25 @@
+kgsl_worker_thr-261   [005] ....  1079.753014: adreno_cmdbatch_retired: ctx=12 ctx_prio=0 ts=50856 inflight=1 recovery=none flags=CTX_SWITCH start=126542688 retire=126557874 rb_id=0, r/w=840/840, q_inflight=1
+   GuardianLayer-2703  [001] ....  1079.756091: adreno_cmdbatch_submitted: ctx=21 ctx_prio=4 ts=76423 inflight=1 flags=CTX_SWITCH ticks=126617190 time=1079.786110 rb_id=1 r/w=1afd/1b5d, q_inflight=1
+   GuardianLayer-2703  [000] ....  1079.756192: adreno_preempt_trigger: trigger from id=0 to id=1 cntl=341
+   GuardianLayer-2703  [000] ....  1079.756205: adreno_cmdbatch_submitted: ctx=12 ctx_prio=0 ts=50857 inflight=2 flags=CTX_SWITCH ticks=126619409 time=1079.786225 rb_id=0 r/w=840/8a0, q_inflight=1
+          <idle>-0     [002] d.h2  1079.756260: adreno_preempt_done: done switch to id=1 from id=0 level=0
+          <idle>-0     [002] d.h2  1079.756272: adreno_preempt_trigger: trigger from id=1 to id=0 cntl=341
+          <idle>-0     [002] d.h1  1079.756400: adreno_preempt_done: done switch to id=0 from id=1 level=1
+          <idle>-0     [002] d.h1  1079.757198: adreno_preempt_trigger: trigger from id=0 to id=1 cntl=341
+ kgsl_worker_thr-261   [005] ....  1079.757209: adreno_cmdbatch_retired: ctx=12 ctx_prio=0 ts=50857 inflight=2 recovery=none flags=CTX_SWITCH start=126623086 retire=126638216 rb_id=0, r/w=8a0/8a0, q_inflight=1
+          <idle>-0     [002] d.h1  1079.757305: adreno_preempt_done: done switch to id=1 from id=0 level=0
+ kgsl_worker_thr-261   [005] ....  1079.757516: adreno_cmdbatch_retired: ctx=21 ctx_prio=4 ts=76423 inflight=1 recovery=none flags=CTX_SWITCH start=126620121 retire=126644344 rb_id=1, r/w=1b5d/1b5d, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.765901: adreno_cmdbatch_submitted: ctx=12 ctx_prio=0 ts=50858 inflight=1 flags=CTX_SWITCH ticks=126805611 time=1079.795923 rb_id=0 r/w=8a0/900, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.765977: adreno_preempt_trigger: trigger from id=1 to id=0 cntl=341
+          <idle>-0     [002] d.h1  1079.766029: adreno_preempt_done: done switch to id=0 from id=1 level=0
+ kgsl_worker_thr-261   [005] ....  1079.766826: adreno_cmdbatch_retired: ctx=12 ctx_prio=0 ts=50858 inflight=1 recovery=none flags=CTX_SWITCH start=126807966 retire=126823084 rb_id=0, r/w=900/900, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.770162: adreno_cmdbatch_submitted: ctx=12 ctx_prio=0 ts=50859 inflight=1 flags=CTX_SWITCH ticks=126886323 time=1079.800127 rb_id=0 r/w=918/960, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.770171: adreno_cmdbatch_submitted: ctx=21 ctx_prio=4 ts=76424 inflight=2 flags=CTX_SWITCH ticks=126887591 time=1079.800193 rb_id=1 r/w=1b5d/1bbd, q_inflight=1
+          <idle>-0     [002] d.h1  1079.770970: adreno_preempt_trigger: trigger from id=0 to id=1 cntl=341
+ kgsl_worker_thr-261   [005] ....  1079.770982: adreno_cmdbatch_retired: ctx=12 ctx_prio=0 ts=50859 inflight=2 recovery=none flags=CTX_SWITCH start=126887456 retire=126902557 rb_id=0, r/w=960/960, q_inflight=1
+          <idle>-0     [002] d.h1  1079.771027: adreno_preempt_done: done switch to id=1 from id=0 level=0
+ kgsl_worker_thr-261   [005] ....  1079.771264: adreno_cmdbatch_retired: ctx=21 ctx_prio=4 ts=76424 inflight=1 recovery=none flags=CTX_SWITCH start=126903882 retire=126908313 rb_id=1, r/w=1bbd/1bbd, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.779857: adreno_cmdbatch_submitted: ctx=12 ctx_prio=0 ts=50860 inflight=1 flags=CTX_SWITCH ticks=127073554 time=1079.809879 rb_id=0 r/w=960/9c0, q_inflight=1
+   OVR::TimeWarp-6384  [007] ....  1079.779928: adreno_preempt_trigger: trigger from id=1 to id=0 cntl=341
+          <idle>-0     [002] d.h1  1079.779980: adreno_preempt_done: done switch to id=0 from id=1 level=0
+ kgsl_worker_thr-261   [005] ....  1079.780785: adreno_cmdbatch_retired: ctx=12 ctx_prio=0 ts=50860 inflight=1 recovery=none flags=CTX_SWITCH start=127075815 retire=127090914 rb_id=0, r/w=9c0/9c0, q_inflight=1

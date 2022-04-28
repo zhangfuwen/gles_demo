@@ -3,8 +3,8 @@
 //
 
 #include "Android.h"
-#include "EGL.h"
-#include "GLES.h"
+#include "../common/EGL.h"
+#include "../common/GLES.h"
 
 std::unique_ptr<char[]>
 AndroidAHardwareBuffer::readAHardwareBuffer(AHardwareBuffer *buf, int &stride, int32_t fence /* = -1 */) {

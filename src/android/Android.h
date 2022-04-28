@@ -18,7 +18,7 @@
 
 #include <android/hardware_buffer.h>
 
-#include "common.h"
+#include "../common/common.h"
 
 class AndroidAHardwareBuffer {
 public:

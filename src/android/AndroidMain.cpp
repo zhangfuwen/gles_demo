@@ -2,10 +2,10 @@
 // Created by zhangfuwen on 2022/3/22.
 //
 #include "Android.h"
-#include "EGL.h"
-#include "GLES.h"
+#include "../common/EGL.h"
+#include "../common/GLES.h"
 #include "arm_counters.h"
-#include "common.h"
+#include "../common/common.h"
 
 #define VIEW_PORT_WIDTH 3712
 #define VIEW_PORT_HEIGHT 3712

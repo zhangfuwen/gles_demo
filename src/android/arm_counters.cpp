@@ -26,8 +26,12 @@
 
 #include <dlfcn.h>
 
-#define FUN_INFO(fmt, ...) printf(fmt "\n", ##__VA_ARGS__); fflush(stdout)
-#define FUN_ERR(fmt, ...) printf(fmt "\n", ##__VA_ARGS__); fflush(stdout)
+#define FUN_INFO(fmt, ...)                                                                                             \
+    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
+    fflush(stdout)
+#define FUN_ERR(fmt, ...)                                                                                              \
+    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
+    fflush(stdout)
 
 ///
 #if 1 // defined(__ANDROID__) || defined(ANDROID)
@@ -195,10 +199,15 @@ void QCOMCounters::BeginPass(uint32_t passID) {
         glSelectPerfMonitorCountersAMD(m_monitor, GL_TRUE, group, 1, &counter[0]);
         FUN_INFO("end select %d", i);
         if (auto err = glGetError(); err != GL_NO_ERROR) {
-//            FUN_ERR("failed to Select %s", GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] + (uint32_t)GPUCounter::FirstQCOM)).name.c_str());
+            //            FUN_ERR("failed to Select %s",
+            //            GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] +
+            //            (uint32_t)GPUCounter::FirstQCOM)).name.c_str());
             m_EnabledCountersSupported[i] = false;
         } else {
-            FUN_ERR("success to Select %s", GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] + (uint32_t)GPUCounter::FirstQCOM)).name.c_str());
+            FUN_ERR(
+                "success to Select %s",
+                GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] + (uint32_t)GPUCounter::FirstQCOM))
+                    .name.c_str());
             m_EnabledCountersSupported[i] = true;
         }
     }
@@ -253,20 +262,20 @@ uint32_t QCOMCounters::GetCounterId(uint32_t groupId, uint32_t counterId) {
     return -1;
 }
 
-std::string to_string_2(double  x) {
+std::string to_string_2(double x) {
     char a[20];
     sprintf(a, "%.2f", x);
     return a;
 }
 
 std::string hr(uint64_t val) { // human readable
-    if(val / 1000000000 != 0) {
+    if (val / 1000000000 != 0) {
         auto ret = double(val) / 1000000000;
         return to_string_2(ret) + " G";
-    } else if(val /1000000 != 0) {
+    } else if (val / 1000000 != 0) {
         auto ret = double(val) / 1000000;
         return to_string_2(ret) + " M";
-    } else if(val /1000 != 0) {
+    } else if (val / 1000 != 0) {
         auto ret = double(val) / 1000;
         return to_string_2(ret) + " M";
     } else {
@@ -275,12 +284,13 @@ std::string hr(uint64_t val) { // human readable
 }
 
 void QCOMCounters::ReadData() {
-    auto enabledCount = std::count_if(m_EnabledCountersSupported.begin(), m_EnabledCountersSupported.end(), [](bool v) { return v;});
+    auto enabledCount =
+        std::count_if(m_EnabledCountersSupported.begin(), m_EnabledCountersSupported.end(), [](bool v) { return v; });
     FUN_INFO("total enable: %d", enabledCount);
 
     std::vector<GPUCounter> cs;
-    for(int i = 0; i< m_EnabledCounters.size(); i++) {
-        if(m_EnabledCountersSupported[i]) {
+    for (int i = 0; i < m_EnabledCounters.size(); i++) {
+        if (m_EnabledCountersSupported[i]) {
             auto index = m_EnabledCounters[i];
             auto c = (GPUCounter)(index + (int)GPUCounter::FirstQCOM);
             cs.push_back(c);
@@ -325,20 +335,27 @@ void QCOMCounters::ReadData() {
             CounterValue data;
             data.u64 = counterResult;
             m_CounterData[m_EventId][internalCounterId] = data;
-//            if (m_EnabledCountersSupported[internalCounterId]) {
+            //            if (m_EnabledCountersSupported[internalCounterId]) {
             auto desc = GetCounterDescription(cs[tmpI]);
-                FUN_INFO( "group:%u, counter:%u, counterResult[%d] = %s  (64bit) %s:%s", groupId, counterId, tmpI, hr(counterResult).c_str(), desc.category.c_str(), desc.name.c_str() );
-//            }
+            FUN_INFO(
+                "group:%u, counter:%u, counterResult[%d] = %s  (64bit) %s:%s",
+                groupId,
+                counterId,
+                tmpI,
+                hr(counterResult).c_str(),
+                desc.category.c_str(),
+                desc.name.c_str());
+            //            }
         } else if (counterType == GL_FLOAT) {
             float counterResult = *(float *)(&counterData[wordCount + 2]);
 
             // Print counter result
             wordCount += 3;
-//            if (m_EnabledCountersSupported[internalCounterId]) {
-                FUN_INFO("counterResult[%d] = %f   (float)", tmpI, counterResult);
-//            }
+            //            if (m_EnabledCountersSupported[internalCounterId]) {
+            FUN_INFO("counterResult[%d] = %f   (float)", tmpI, counterResult);
+            //            }
         } else {
-           FUN_INFO("unkonw counter type %04x", counterType);
+            FUN_INFO("unkonw counter type %04x", counterType);
         }
         tmpI++;
     }
