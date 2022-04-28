@@ -32,7 +32,7 @@ AHardwareBuffer *AndroidAHardwareBuffer::allocAHardwareBuffer(uint32_t w, uint32
     desc.width = w;
     desc.height = h;
     desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
-                 | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+                 | AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER;
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
     AHardwareBuffer_allocate(&desc, &hardwareBuffer);

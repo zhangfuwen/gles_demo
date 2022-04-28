@@ -22,7 +22,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
 
 
     # gpu top
-    add_executable(gputop src/android/AndroidGpuTop.cpp)
+    add_executable(gputop src/tools/AndroidGpuTop.cpp)
     target_compile_options(gputop PRIVATE -std=c++17)
     target_compile_features(gputop INTERFACE cxx_std_17)
 
@@ -54,7 +54,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
             )
 
     # gputop
-    add_executable(gputop src/android/AndroidGpuTop.cpp)
+    add_executable(gputop src/tools/AndroidGpuTop.cpp)
     target_compile_options(gputop PRIVATE -std=c++17)
     target_compile_features(gputop INTERFACE cxx_std_17)
 

@@ -9,6 +9,14 @@
 
 #define VIEW_PORT_WIDTH 3712
 #define VIEW_PORT_HEIGHT 3712
+
+bool string_contains_any(std::string s, std::vector<std::string> substrs) {
+    return std::any_of(substrs.begin(), substrs.end(), [&s](const std::string& substr) {
+        return s.find(substr) != std::string::npos;
+    });
+}
+
+
 int main() {
     int width = VIEW_PORT_WIDTH;
     int height = VIEW_PORT_HEIGHT;
@@ -79,25 +87,22 @@ int main() {
     auto cs = counters.GetPublicCounterIds();
     for (auto &c : cs) {
         auto desc = counters.GetCounterDescription(c);
-        //        if(desc.name.find("VBIF") != std::string::npos
-        //           || desc.category.find("VBIF") != std::string::npos
-        //
-        //                ||desc.name.find("GBIF") != std::string::npos
-        //            || desc.category.find("GBIF") != std::string::npos
-        //
-        //               ||desc.name.find("UCHE") != std::string::npos
-        //               || desc.category.find("UCHE") != std::string::npos
-        //
-        //               || desc.name.find("AXI") != std::string::npos
-        //                  || desc.name.find("AXI") != std::string::npos
-        //                     || desc.name.find("TP") != std::string::npos
-        //                     || desc.name.find("TP") != std::string::npos
-        //                        || desc.name.find("SP") != std::string::npos
-        //                        || desc.name.find("SP") != std::string::npos
-        //            )  {
+#if 0
+        std::vector<std::string> criteria = {
+            "VBIF", "GBIF", "UCHE", "AXI", "TP", "SP"
+        };
+        if(string_contains_any(desc.name, criteria)
+            || string_contains_any(desc.category, criteria)
+            )
+        {
+            LOGI("desc name:%s, cat:%s, desc:%s", desc.name.c_str(), desc.category.c_str(), desc.description.c_str());
+            counters.EnableCounter(c);
+
+        }
+#else
         LOGI("desc name:%s, cat:%s, desc:%s", desc.name.c_str(), desc.category.c_str(), desc.description.c_str());
         counters.EnableCounter(c);
-        //        }
+#endif
     }
 
     LOGI("start");

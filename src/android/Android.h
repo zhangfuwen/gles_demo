@@ -35,8 +35,8 @@ public:
     static AHardwareBuffer *allocAHardwareBuffer(uint32_t w, uint32_t h);
 
 private:
-    GLuint m_tex;
-    AHardwareBuffer *m_aHardwareBuffer;
+    GLuint m_tex{};
+    AHardwareBuffer *m_aHardwareBuffer = nullptr;
 };
 
 #endif // TEST_ANDROID_H
