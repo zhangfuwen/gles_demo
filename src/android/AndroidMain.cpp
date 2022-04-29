@@ -107,8 +107,6 @@ bool string_contains_any(std::string s, std::vector<std::string> substrs) {
 
 #if not NATIVE_APP
 int main() {
-    ALOGI("main");
-    android_main1(nullptr);
     int width = VIEW_PORT_WIDTH;
     int height = VIEW_PORT_HEIGHT;
     EGL offscreen{};
@@ -145,7 +143,10 @@ int main() {
             timespec t1{}, t2{};
             clock_gettime(CLOCK_MONOTONIC, &t1);
 
+            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
             if (auto ret = gles.Draw(); ret < 0) {
+                LOGE("draw failed");
                 gles.Finish();
                 offscreen.Finish();
                 return -1;
@@ -198,11 +199,11 @@ int main() {
     //    render(5000);
     //    counters.EndSample();
 
-    //    counters.BeginSample(1);
-    //    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    //    LOGI("on offscreen");
-    //    render(5000);
-    //    counters.EndSample();
+    counters.BeginSample(1);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    LOGI("on offscreen");
+    render(5000);
+    counters.EndSample();
 
     counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());
@@ -232,6 +233,12 @@ int main() {
 #endif
 
     int res = 0;
+
+    if (auto ret = GLES::ReadPixels("/data/fbo0.png", 0, GL_COLOR_ATTACHMENT0, width, height);
+        ret < 0) {
+        LOGE("failed to ReadPixels");
+        res = ret;
+    }
 
     if (auto ret = GLES::ReadPixels("/data/fbo.png", fboAndroid.value(), GL_COLOR_ATTACHMENT0, width, height);
         ret < 0) {

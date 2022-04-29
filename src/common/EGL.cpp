@@ -4,7 +4,7 @@
 #include "EGL.h"
 #include "common.h"
 
-int EGL::Init(int width, int height, EGLNativeWindowType win) {
+int EGL::Init(int width, int height, EGLNativeWindowType win /* = nullptr */) {
     // clang-format off
     const EGLint confAttr[] = {
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT, // very important!

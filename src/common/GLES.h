@@ -59,7 +59,7 @@ layout(location = 1) in vec2 a_Position;
 uniform mat2 uRotation;
 out vec3 color;
 void main() {
-    gl_Position= vec4(uRotation *a_Position, 0.0f, 1.0f);
+    gl_Position= vec4(uRotation *a_Position*2.0f, 0.0f, 1.0f);
     color = vec3(a_Position, 1.0);
 }
 )";
