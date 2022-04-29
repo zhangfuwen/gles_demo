@@ -75,11 +75,21 @@ public:
         eglCtx = EGL_NO_CONTEXT;
     }
 
-    int Init(int width, int height);
+    int Init(int width, int height, EGLNativeWindowType win = nullptr);
+
+    EGLConfig GetConfig() {
+        return eglConf;
+    }
+    EGLContext GetContext() {
+        return eglCtx;
+    }
+    EGLSurface GetSurface() {
+        return eglSurface;
+    }
 
 private:
-    EGLConfig eglConf;
-    EGLSurface eglSurface;
-    EGLContext eglCtx;
-    EGLDisplay eglDisp;
+    EGLConfig eglConf{EGL_NO_CONFIG_KHR};
+    EGLSurface eglSurface{EGL_NO_SURFACE};
+    EGLContext eglCtx{EGL_NO_CONTEXT};
+    EGLDisplay eglDisp{EGL_NO_DISPLAY};
 };

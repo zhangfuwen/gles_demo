@@ -1,59 +1,140 @@
 //
 // Created by zhangfuwen on 2022/3/22.
 //
-#include "Android.h"
 #include "../common/EGL.h"
 #include "../common/GLES.h"
-#include "arm_counters.h"
 #include "../common/common.h"
+#include "Android.h"
+#include "arm_counters.h"
+#include <android/log.h>
+
+#if NATIVE_APP
+#include <android/native_activity.h>
+#include <android_native_app_glue.h>
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native_app", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "naitve_app", __VA_ARGS__))
+extern "C" {
+
+class App {
+public:
+    void onAppCmd(android_app *state, int32_t cmd) {
+        LOGI("cmd %d", cmd);
+        switch (cmd) {
+            case APP_CMD_INIT_WINDOW: {
+                LOGI("cmd %d, INIT_WINDOW", cmd);
+
+                if(state->window != nullptr) {
+                    auto w = ANativeWindow_getWidth(state->window);
+                    auto h = ANativeWindow_getHeight(state->window);
+                    LOGI("width:%d, height:%d", w, h);
+                    m_egl.Init(w, h, state->window);
+                    m_gles.Init();
+                }
+
+            } break;
+            case APP_CMD_TERM_WINDOW:
+                if(m_egl.GetContext() != EGL_NO_CONTEXT) {
+                    m_gles.Finish();
+                    m_egl.Finish();
+                }
+                break;
+            case APP_CMD_SAVE_STATE:
+                state->savedState = this;
+                state->savedStateSize = sizeof(App);
+            default:
+                break;
+        }
+    }
+    void Draw() {
+        if(m_egl.GetContext() != EGL_NO_CONTEXT) {
+//            LOGI("Drawing");
+            m_gles.Draw();
+            eglSwapBuffers(eglGetCurrentDisplay(), m_egl.GetSurface());
+        } else {
+//            LOGI("no context");
+        }
+    }
+
+private:
+    EGL m_egl{};
+    GLES m_gles{};
+};
+void android_main_override(struct android_app *state) {
+    if (state == nullptr) {
+        LOGI("state is nullptr");
+        return;
+    }
+    LOGI("android_app %p", state);
+    App app;
+    state->userData = &app;
+
+    state->onAppCmd = [](android_app *state, int32_t cmd) {
+        LOGI("cmd %d", cmd);
+        auto *app = (App *)state->userData;
+        app->onAppCmd(state, cmd);
+    };
+
+    LOGI("starting loop");
+    while (!state->destroyRequested) {
+        int ident;
+        int events;
+        struct android_poll_source *source = nullptr;
+        while ((ident = ALooper_pollAll(0, nullptr, &events, (void **)&source)) >= 0) {
+            if (source != nullptr) {
+                source->process(state, source);
+            }
+
+            if (ident == LOOPER_ID_USER) {
+            }
+        }
+        auto pApp = (App*)state->userData;
+        pApp->Draw();
+    }
+}
+} // end extern "C"
+
+#endif
 
 #define VIEW_PORT_WIDTH 3712
 #define VIEW_PORT_HEIGHT 3712
 
 bool string_contains_any(std::string s, std::vector<std::string> substrs) {
-    return std::any_of(substrs.begin(), substrs.end(), [&s](const std::string& substr) {
+    return std::any_of(substrs.begin(), substrs.end(), [&s](const std::string &substr) {
         return s.find(substr) != std::string::npos;
     });
 }
 
-
+#if not NATIVE_APP
 int main() {
+    ALOGI("main");
+    android_main1(nullptr);
     int width = VIEW_PORT_WIDTH;
     int height = VIEW_PORT_HEIGHT;
     EGL offscreen{};
     if (auto x = offscreen.Init(width, height); x < 0) {
         return -1;
     }
-    defer de([&offscreen]() {
-        offscreen.Finish();
-
-    });
+    defer de([&offscreen]() { offscreen.Finish(); });
 
     GLES gles{};
     if (auto ret = gles.Init(); ret < 0) {
         offscreen.Finish();
         return -1;
     }
-    defer dg([&gles]() {
-        gles.Finish();
-    });
+    defer dg([&gles]() { gles.Finish(); });
 
     auto fboTex = GLES::CreateFBO(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
     if (!fboTex) {
         return -1;
     }
-    defer dfbo([fboTex]() {
-        glDeleteFramebuffers(1, &fboTex.value());
-    });
+    defer dfbo([fboTex]() { glDeleteFramebuffers(1, &fboTex.value()); });
 
     auto buffer = new AndroidAHardwareBuffer(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
     auto fboAndroid = GLES::CreateFBO(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, false, buffer->GetID());
-    if(!fboAndroid) {
+    if (!fboAndroid) {
         return -1;
     }
-    defer dfbo1([fboAndroid]() {
-      glDeleteFramebuffers(1, &fboAndroid.value());
-    });
+    defer dfbo1([fboAndroid]() { glDeleteFramebuffers(1, &fboAndroid.value()); });
 
     auto render = [&gles, &offscreen](int num_frames = 1000) {
         glFinish();
@@ -109,18 +190,18 @@ int main() {
     counters.BeginPass();
     LOGI("start");
 
-//    counters.BeginSample(0);
-//    LOGI("start");
-//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-//    LOGI("on offscreen");
-//    render(5000);
-//    counters.EndSample();
+    //    counters.BeginSample(0);
+    //    LOGI("start");
+    //    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    //    LOGI("on offscreen");
+    //    render(5000);
+    //    counters.EndSample();
 
-//    counters.BeginSample(1);
-//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-//    LOGI("on offscreen");
-//    render(5000);
-//    counters.EndSample();
+    //    counters.BeginSample(1);
+    //    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    //    LOGI("on offscreen");
+    //    render(5000);
+    //    counters.EndSample();
 
     counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());
@@ -151,7 +232,8 @@ int main() {
 
     int res = 0;
 
-    if (auto ret = GLES::ReadPixels("/data/fbo.png", fboAndroid.value(), GL_COLOR_ATTACHMENT0, width, height); ret < 0) {
+    if (auto ret = GLES::ReadPixels("/data/fbo.png", fboAndroid.value(), GL_COLOR_ATTACHMENT0, width, height);
+        ret < 0) {
         LOGE("failed to ReadPixels");
         res = ret;
     }
@@ -163,3 +245,5 @@ int main() {
 
     return res;
 }
+
+#endif

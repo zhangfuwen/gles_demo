@@ -4,17 +4,17 @@
 #include "EGL.h"
 #include "common.h"
 
-int EGL::Init(int width, int height) {
+int EGL::Init(int width, int height, EGLNativeWindowType win) {
     // clang-format off
     const EGLint confAttr[] = {
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT, // very important!
-        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-        EGL_RED_SIZE, 1,
-        EGL_GREEN_SIZE, 1,
-        EGL_BLUE_SIZE, 1,
-        EGL_ALPHA_SIZE, 1,
-        EGL_DEPTH_SIZE, 0,
-        EGL_STENCIL_SIZE, 0,
+        EGL_SURFACE_TYPE, win? EGL_WINDOW_BIT : EGL_PBUFFER_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 8,
+        EGL_STENCIL_SIZE, 8,
         EGL_NONE};
 
     const EGLint ctxAttr[] = {
@@ -48,26 +48,52 @@ int EGL::Init(int width, int height) {
     }
 
     // create PbufferSurface
-    eglSurface = eglCreatePbufferSurface(eglDisp, eglConf, surfaceAttr);
-    if (eglSurface == EGL_NO_SURFACE) {
-        switch (eglGetError()) {
-            case EGL_BAD_ALLOC:
-                LOGE("Not enough resources available");
-                break;
-            case EGL_BAD_CONFIG:
-                LOGE("provided EGLConfig is invalid");
-                break;
-            case EGL_BAD_PARAMETER:
-                LOGE("provided EGL_WIDTH and EGL_HEIGHT is invalid");
-                break;
-            case EGL_BAD_MATCH:
-                LOGE("Check window and EGLConfig attributes");
-                break;
-            default:
-                LOGE("Unknown error");
-                break;
+    if(win) {
+        eglSurface = eglCreateWindowSurface(eglDisp, eglConf, win, nullptr);
+        if (eglSurface == EGL_NO_SURFACE) {
+            switch (eglGetError()) {
+                case EGL_BAD_ALLOC:
+                    LOGE("Not enough resources available");
+                    break;
+                case EGL_BAD_CONFIG:
+                    LOGE("provided EGLConfig is invalid");
+                    break;
+                case EGL_BAD_PARAMETER:
+                    LOGE("provided EGL_WIDTH and EGL_HEIGHT is invalid");
+                    break;
+                case EGL_BAD_MATCH:
+                    LOGE("Check window and EGLConfig attributes");
+                    break;
+                default:
+                    LOGE("Unknown error");
+                    break;
+            }
+            EGL_CHECK_ERROR_RET(-1, "eglCreateWindowSurface");
         }
-        EGL_CHECK_ERROR_RET(-1, "eglCreatePbufferSurface");
+
+    } else {
+        eglSurface = eglCreatePbufferSurface(eglDisp, eglConf, surfaceAttr);
+        if (eglSurface == EGL_NO_SURFACE) {
+            switch (eglGetError()) {
+                case EGL_BAD_ALLOC:
+                    LOGE("Not enough resources available");
+                    break;
+                case EGL_BAD_CONFIG:
+                    LOGE("provided EGLConfig is invalid");
+                    break;
+                case EGL_BAD_PARAMETER:
+                    LOGE("provided EGL_WIDTH and EGL_HEIGHT is invalid");
+                    break;
+                case EGL_BAD_MATCH:
+                    LOGE("Check window and EGLConfig attributes");
+                    break;
+                default:
+                    LOGE("Unknown error");
+                    break;
+            }
+            EGL_CHECK_ERROR_RET(-1, "eglCreatePbufferSurface");
+        }
+
     }
 
     if (eglCtx = eglCreateContext(eglDisp, eglConf, EGL_NO_CONTEXT, ctxAttr); eglCtx == EGL_NO_CONTEXT) {

@@ -9,6 +9,32 @@ message(WARNING "CMAKE_SYSTEM_NAME ${CMAKE_SYSTEM_NAME}")
 
 ### android ###
 if (CMAKE_SYSTEM_NAME MATCHES Android)
+
+    add_library(native_app_glue STATIC
+            ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+    target_include_directories(native_app_glue PUBLIC
+            ${ANDROID_NDK}/sources/android/native_app_glue)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
+
+    add_library(native_app SHARED
+            src/common/EGL.cpp
+            src/common/GLES.cpp
+            src/android/Android.cpp
+            src/android/AndroidMain.cpp
+            src/android/arm_counters.cpp)
+    target_include_directories(native_app PUBLIC
+            ${ANDROID_NDK}/sources/android/native_app_glue)
+    target_compile_options(native_app PRIVATE -std=c++17 -DNATIVE_APP=1)
+    target_link_libraries(native_app
+            EGL
+            GLESv2
+            GLESv3
+            android
+            jnigraphics
+            nativewindow
+            log)
+    target_compile_features(native_app INTERFACE cxx_std_17)
+
     # offscreen
     add_executable(android_offscreen_test
             src/common/EGL.cpp
@@ -17,7 +43,15 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
             src/android/AndroidMain.cpp
             src/android/arm_counters.cpp)
     target_compile_options(android_offscreen_test PRIVATE -std=c++17)
-    target_link_libraries(android_offscreen_test EGL GLESv2 GLESv3 android jnigraphics nativewindow log)
+    target_link_libraries(android_offscreen_test
+            EGL
+            GLESv2
+            GLESv3
+            android
+            jnigraphics
+            native_app_glue
+            nativewindow
+            log)
     target_compile_features(android_offscreen_test INTERFACE cxx_std_17)
 
     # vulkan
@@ -117,6 +151,11 @@ else ()
             )
 
     if (CMAKE_SYSTEM_NAME MATCHES Android)
+        add_dependencies(native_app handycpp)
+        add_dependencies(native_app happly)
+        target_include_directories(native_app PRIVATE ${CMAKE_BINARY_DIR}/handycpp/src/include)
+        target_include_directories(native_app PRIVATE ${CMAKE_BINARY_DIR}/happly/src)
+
         add_dependencies(android_offscreen_test handycpp)
         add_dependencies(android_offscreen_test happly)
         target_include_directories(android_offscreen_test PRIVATE ${CMAKE_BINARY_DIR}/handycpp/src/include)
