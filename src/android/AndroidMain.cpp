@@ -109,18 +109,18 @@ int main() {
     counters.BeginPass();
     LOGI("start");
 
-    counters.BeginSample(0);
-    LOGI("start");
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    LOGI("on offscreen");
-    render(5000);
-    counters.EndSample();
+//    counters.BeginSample(0);
+//    LOGI("start");
+//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+//    LOGI("on offscreen");
+//    render(5000);
+//    counters.EndSample();
 
-    counters.BeginSample(1);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    LOGI("on offscreen");
-    render(5000);
-    counters.EndSample();
+//    counters.BeginSample(1);
+//    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+//    LOGI("on offscreen");
+//    render(5000);
+//    counters.EndSample();
 
     counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());

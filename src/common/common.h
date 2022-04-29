@@ -11,7 +11,12 @@
 #define FUN_PRINT(fmt, ...) printf(fmt"\n", ##__VA_ARGS__); fflush(stdout)
 #include "handycpp/logging.h"
 
+#ifndef FUN_INFO
+#define LOGI(fmt, ...)  printf(fmt"\n", ##__VA_ARGS__); fflush(stdout)
+#else
 #define LOGI FUN_INFO
+#endif
+
 
 #define LOGE(fmt, ...) LOGI("-----------" fmt " ---------", ##__VA_ARGS__)
 

@@ -20,6 +20,14 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
     target_link_libraries(android_offscreen_test EGL GLESv2 GLESv3 android jnigraphics nativewindow log)
     target_compile_features(android_offscreen_test INTERFACE cxx_std_17)
 
+    # vulkan
+    add_executable(vulkan_test
+            src/common/Vulkan.cpp
+            )
+    target_compile_options(vulkan_test PRIVATE -std=c++17)
+    target_link_libraries(vulkan_test EGL vulkan GLESv2 GLESv3 android jnigraphics nativewindow log)
+    target_compile_features(vulkan_test INTERFACE cxx_std_17)
+
 
     # gpu top
     add_executable(gputop src/tools/AndroidGpuTop.cpp)
