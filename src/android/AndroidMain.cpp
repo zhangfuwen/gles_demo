@@ -47,7 +47,8 @@ public:
     }
     void Draw() {
         if(m_egl.GetContext() != EGL_NO_CONTEXT) {
-//            LOGI("Drawing");
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             m_gles.Draw();
             eglSwapBuffers(eglGetCurrentDisplay(), m_egl.GetSurface());
         } else {

@@ -268,7 +268,7 @@ int GLES::Draw() const {
     }
 
     // clang-format off
-#if 0
+#if 1
         float rotation[4] = {
             cosf(angle), -sinf(angle),
             sinf(angle), cosf(angle),
