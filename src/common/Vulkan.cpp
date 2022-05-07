@@ -121,6 +121,13 @@ bool Vulkan::GetMemoryTypeFromProperties( uint32_t typeBits, VkFlags requirement
     return false;
 }
 
+/**
+ * Create Vulkan Memory object and export fd
+ * @param w
+ * @param h
+ * @param size
+ * @return fd
+ */
 int Vulkan::CreateMemObjFd(int w, int h, int *size) {
     VkImage vkImage;
     VkDeviceMemory vkDeviceMemory;
@@ -269,7 +276,9 @@ int Vulkan::CreateMemObjFd(int w, int h, int *size) {
         LOGE("vkGetMemoryFdKHR failed");
         return -1;
     }
-    *size = vkMemoryRequirements.size;
+    if(size != nullptr) {
+        *size = vkMemoryRequirements.size;
+    }
 
     vkDestroyImage(m_vkDevice, vkImage, nullptr);
     vkFreeMemory(m_vkDevice, vkDeviceMemory, nullptr);

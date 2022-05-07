@@ -13,7 +13,7 @@ public:
     int Finish();
     int Draw();
 
-    int CreateMemObjFd(int w, int h, int *size);
+    int CreateMemObjFd(int w, int h, int *size = nullptr);
     bool GetMemoryTypeFromProperties( uint32_t typeBits, VkFlags requirementsMask, uint32_t* typeIndex);
 
     int Test1();

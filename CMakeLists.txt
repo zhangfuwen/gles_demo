@@ -20,7 +20,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
             src/common/EGL.cpp
             src/common/GLES.cpp
             src/android/Android.cpp
-            src/android/AndroidMain.cpp
+            src/android/NativeApp.cpp
             src/android/arm_counters.cpp)
     target_include_directories(native_app PUBLIC
             ${ANDROID_NDK}/sources/android/native_app_glue)
@@ -100,7 +100,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Linux)
     target_compile_options(gputop PRIVATE -std=c++17)
     target_compile_features(gputop INTERFACE cxx_std_17)
 
-endif ()
+endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
 
 
