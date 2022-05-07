@@ -4,6 +4,7 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "GLES.h"
+#include "EGL.h"
 
 #include "handycpp/file.h"
 #include "handycpp/image.h"
@@ -189,13 +190,13 @@ GLES::CreateFBO(int width, int height, bool withDepthStencil /* = false */, GLui
 
     // attach color attachment
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTex, 0);
-    GL_CHECK_ERROR_RET({}, "glFramebufferTexture2D faild");
+    GL_CHECK_ERROR_RET({}, "glFramebufferTexture2D failed");
 
     // check framebuffer completeness
     GLenum ret = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (ret != GL_FRAMEBUFFER_COMPLETE) {
         LOGE("framebuffer incomplete");
-        return -1;
+        return {};
     }
     return fbo;
 }
@@ -287,6 +288,38 @@ int GLES::Draw() const {
     glDrawArrays(GL_TRIANGLES, 0, 6);
     GL_CHECK_ERROR_RET(-1, "glDrawArrays failed");
     return 0;
+}
+
+std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd) {
+    // create a texture object
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_LINEAR_TILING_EXT);
+    GL_CHECK_ERROR_RET({}, "");
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    GL_CHECK_ERROR_RET({}, "");
+
+    // create a memory object and import from fd
+    GLuint memObj;
+    pfnglCreateMemoryObjectsEXT(1, &memObj);
+    GL_CHECK_ERROR_RET({}, "");
+
+    LOGE("memobj %u, size :%d", memObj,size);
+
+    GLint dedicated = GL_TRUE;
+    pfnglMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+    GL_CHECK_ERROR_RET({}, "");
+    pfnglImportMemoryFdEXT(memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd);
+    GL_CHECK_ERROR_RET({}, "");
+
+    // attach memory object to texture
+    pfnglTextureStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, memObj, 0);
+    GL_CHECK_ERROR_RET({}, "");
+//    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
+//    GL_CHECK_ERROR_RET({}, "");
+
+    return tex;
 }
 #if 0
 void drawBunny() {

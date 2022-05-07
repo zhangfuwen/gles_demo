@@ -37,6 +37,13 @@ int Vulkan::Init() {
     };
     vkCreateInstance(&instanceCreateInfo, nullptr, &m_vkInstance);
 
+    InitVkPointers();
+    if (auto ret = CheckVkPointers(); ret < 0) {
+        LOGE("failed to get all vulkan function pointers");
+        return ret;
+    }
+
+
     // enumerate devices and choose first one
     uint32_t gpuCount = 0;
     vkEnumeratePhysicalDevices(m_vkInstance, &gpuCount, nullptr);
@@ -99,19 +106,15 @@ int Vulkan::Init() {
         m_vkQueue);
     return 0;
 }
-bool Vulkan::GetMemoryTypeFromProperties( uint32_t typeBits, VkFlags requirementsMask, uint32_t* typeIndex)
-{
+bool Vulkan::GetMemoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex) {
     VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
     vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &physicalDeviceMemoryProperties);
-    if(typeIndex == nullptr){
+    if (typeIndex == nullptr) {
         LOGE("GetMemoryTypeFromProperties typeIndex == nullptr");
     }
-    for (uint32_t i = 0; i < 32; i++)
-    {
-        if ((typeBits & 1) == 1)
-        {
-            if ((physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
-            {
+    for (uint32_t i = 0; i < 32; i++) {
+        if ((typeBits & 1) == 1) {
+            if ((physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
                 *typeIndex = i;
                 return true;
             }
@@ -186,7 +189,7 @@ int Vulkan::CreateMemObjFd(int w, int h, int *size) {
     ImageFormatProperties.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
     ImageFormatProperties.pNext = &ExternalImageFormatProperties;
 
-    auto err = vkGetPhysicalDeviceImageFormatProperties2KHR(
+    auto err = pfnVkGetPhysicalDeviceImageFormatProperties2KHR(
         m_vkPhysicalDevice, &DeviceImageFormatInfo, &ImageFormatProperties);
     if (VK_SUCCESS != err) {
         LOGE("g_vkGetPhysicalDeviceImageFormatProperties2KHR Failed!!!!!");
@@ -271,12 +274,12 @@ int Vulkan::CreateMemObjFd(int w, int h, int *size) {
     getFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
 
     int fd = -1;
-    err = vkGetMemoryFdKHR(m_vkDevice, &getFdInfo, &fd);
+    err = pfnVkGetMemoryFdKHR(m_vkDevice, &getFdInfo, &fd);
     if (VK_SUCCESS != err) {
         LOGE("vkGetMemoryFdKHR failed");
         return -1;
     }
-    if(size != nullptr) {
+    if (size != nullptr) {
         *size = vkMemoryRequirements.size;
     }
 
@@ -287,3 +290,36 @@ int Vulkan::CreateMemObjFd(int w, int h, int *size) {
 
 int Vulkan::Finish() { return 0; }
 int Vulkan::Draw() { return 0; }
+
+void Vulkan::InitVkPointers() {
+#define INIT_POINTER(name)                                                                                             \
+    if (pfnVk##name == nullptr) {                                                                                      \
+        pfnVk##name = (PFN_vk##name)vkGetInstanceProcAddr(m_vkInstance, "vk" #name);                                   \
+    }
+
+    LIST_VK_POINTERS(INIT_POINTER)
+#undef INIT_POINTER
+}
+
+/**
+ * check if there is any vulkan functions pointer uninitialized
+ * @return  return -1 if there is any vulkan function pointer uninitialized, return 0 otherwise
+ */
+int Vulkan::CheckVkPointers() {
+
+    bool hasNull = false;
+#define CHECK_POINTER(name)                                                                                            \
+    LOGD("%s -> %p", "pfnVk" #name, pfnVk##name);                                                                      \
+    if (pfnVk##name == nullptr) {                                                                                      \
+        FUN_INFO(#name " is nullptr");                                                                                 \
+        hasNull = true;                                                                                                \
+    }
+
+    LIST_VK_POINTERS(CHECK_POINTER)
+
+    if (hasNull) {
+        return -1;
+    }
+#undef CHECK_POINTER
+    return 0;
+}

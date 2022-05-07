@@ -19,6 +19,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
     add_library(native_app SHARED
             src/common/EGL.cpp
             src/common/GLES.cpp
+            src/common/Vulkan.cpp
             src/android/Android.cpp
             src/android/NativeApp.cpp
             src/android/arm_counters.cpp)
@@ -30,6 +31,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
             GLESv2
             GLESv3
             android
+            vulkan
             jnigraphics
             nativewindow
             log)

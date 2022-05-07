@@ -109,5 +109,6 @@ int EGL::Init(int width, int height, EGLNativeWindowType win /* = nullptr */) {
     int values[1] = {0};
     eglQueryContext(eglDisp, eglCtx, EGL_CONTEXT_CLIENT_VERSION, values);
     LOGI("EGLContext created, client version %d", values[0]);
+    LIST_GLES_POINTERS(INIT_GLES_FUNC_POINTER);
     return 0;
 }

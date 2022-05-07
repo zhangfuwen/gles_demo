@@ -9,7 +9,7 @@
 #include <memory>
 #include <optional>
 #include <vector>
-
+#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <GLES3/gl3.h>
@@ -112,6 +112,9 @@ public:
     static std::optional<GLuint> CreateFBO(int width, int height, bool withDepthStencil = false, GLuint tex = 0);
     static int ReadPixels(const char *filePath, GLuint fbo = 0, GLenum src = GL_BACK, int width = 0, int height = 0);
     static int GetFramebufferInfo(bool read = true);
+    static std::optional<GLuint> CreateTextureFromFd(int w, int h, int size, int fd);
+
+
 };
 
 #endif // TEST_GLES_H

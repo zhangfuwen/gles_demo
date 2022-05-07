@@ -11,7 +11,12 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl31.h>
 #include <GLES3/gl32.h>
+#include <GLES3/gl3ext.h>
 
 #include <cstdio>
 #include <string>
@@ -93,3 +98,15 @@ private:
     EGLContext eglCtx{EGL_NO_CONTEXT};
     EGLDisplay eglDisp{EGL_NO_DISPLAY};
 };
+
+#define DEF_GLES_FUNC_POINTER(name) inline decltype(name) * pfn##name = nullptr
+
+#define INIT_GLES_FUNC_POINTER(name) pfn##name = (decltype(name)*)eglGetProcAddress(#name)
+
+#define LIST_GLES_POINTERS(macro) \
+    macro(glCreateMemoryObjectsEXT); \
+    macro(glMemoryObjectParameterivEXT); \
+    macro(glImportMemoryFdEXT);   \
+    macro(glTextureStorageMem2DEXT)
+
+LIST_GLES_POINTERS(DEF_GLES_FUNC_POINTER);
