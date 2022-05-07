@@ -143,6 +143,7 @@ int main() {
             timespec t1{}, t2{};
             clock_gettime(CLOCK_MONOTONIC, &t1);
 
+            //******* glCear *****//
             glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
             if (auto ret = gles.Draw(); ret < 0) {
@@ -183,7 +184,6 @@ int main() {
 
         }
 #else
-        LOGI("desc name:%s, cat:%s, desc:%s", desc.name.c_str(), desc.category.c_str(), desc.description.c_str());
         counters.EnableCounter(c);
 #endif
     }
@@ -202,19 +202,19 @@ int main() {
     counters.BeginSample(1);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     LOGI("on offscreen");
-    render(5000);
+    render(500);
     counters.EndSample();
 
     counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());
     LOGI("on ahardwarebuffer");
-    render(5000);
+    render(500);
     counters.EndSample();
 
     counters.BeginSample(3);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex.value());
     LOGI("on texture");
-    render(5000);
+    render(500);
     counters.EndSample();
 
 #if 0

@@ -25,13 +25,14 @@
 #include "arm_counters.h"
 
 #include <dlfcn.h>
+#include <handycpp/logging.h>
 
-#define FUN_INFO(fmt, ...)                                                                                             \
-    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
-    fflush(stdout)
-#define FUN_ERR(fmt, ...)                                                                                              \
-    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
-    fflush(stdout)
+//#define FUN_INFO(fmt, ...)                                                                                             \
+//    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
+//    fflush(stdout)
+//#define FUN_ERR(fmt, ...)                                                                                              \
+//    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
+//    fflush(stdout)
 
 ///
 #if 1 // defined(__ANDROID__) || defined(ANDROID)
@@ -115,7 +116,6 @@ void QCOMCounters::GetGroupAndCounterList(GLuint **groupsList, int *numGroups, C
 
         char curGroupName[256] = {0};
         glGetPerfMonitorGroupStringAMD(groups[i], 256, NULL, curGroupName);
-        FUN_INFO("groupname[%d]: %s", i, curGroupName);
 
         counters[i].groupName = std::string(curGroupName);
         for (int j = 0; j < counters[i].numCounters; j++) {
@@ -123,7 +123,6 @@ void QCOMCounters::GetGroupAndCounterList(GLuint **groupsList, int *numGroups, C
 
             glGetPerfMonitorCounterStringAMD(groups[i], counters[i].counterList[j], 256, NULL, curCounterName);
 
-            FUN_INFO("countername[%d]: %s", j, curCounterName);
             counters[i].counterNames.push_back(std::string(curCounterName));
 
             MyCounter tmp;
@@ -168,7 +167,7 @@ bool QCOMCounters::Init() {
         glDeletePerfMonitorsAMD == nullptr || glGetPerfMonitorCounterStringAMD == nullptr ||
         glGetPerfMonitorGroupStringAMD == nullptr || glGetPerfMonitorGroupsAMD == nullptr ||
         glGetPerfMonitorCountersAMD == nullptr) {
-        FUN_ERR("QCOM Counter init failed");
+        FUN_WARN("QCOM Counter init failed");
         return false;
     }
 
@@ -182,34 +181,24 @@ void QCOMCounters::BeginPass(uint32_t passID) {
     // create perf monitor ID
     glGenPerfMonitorsAMD(1, &m_monitor);
     if (auto err = glGetError(); err != GL_NO_ERROR) {
-        FUN_ERR("failed to GenPerfMonitors");
+        FUN_WARN("failed to GenPerfMonitors");
     }
-    FUN_INFO("adsfad xx %d", m_EnabledCounters.size());
     m_EnabledCountersSupported.resize(m_EnabledCounters.size());
-    FUN_INFO("adsfad");
 
     // enable the counters
     GLuint group;
     GLuint counter[1];
     for (size_t i = 0; i < m_EnabledCounters.size(); i++) {
-        FUN_INFO("adsfad %d", i);
         group = m_MyCounters[m_EnabledCounters[i]].groupId;
         counter[0] = m_MyCounters[m_EnabledCounters[i]].counterId;
-        FUN_INFO("select %d", i);
         glSelectPerfMonitorCountersAMD(m_monitor, GL_TRUE, group, 1, &counter[0]);
-        FUN_INFO("end select %d", i);
         if (auto err = glGetError(); err != GL_NO_ERROR) {
-            //            FUN_ERR("failed to Select %s",
-            //            GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] +
-            //            (uint32_t)GPUCounter::FirstQCOM)).name.c_str());
             m_EnabledCountersSupported[i] = false;
         } else {
-            FUN_ERR(
-                "success to Select %s",
-                GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] + (uint32_t)GPUCounter::FirstQCOM))
-                    .name.c_str());
             m_EnabledCountersSupported[i] = true;
         }
+        auto desc = GetCounterDescription((GPUCounter)((uint32_t)m_EnabledCounters[i] + (uint32_t)GPUCounter::FirstQCOM));
+        FUN_WARN("Select %s:%s %s", desc.category.c_str(), desc.name.c_str(), m_EnabledCountersSupported[i]? "success" : "failed");
     }
 }
 
@@ -345,7 +334,6 @@ void QCOMCounters::ReadData() {
                 hr(counterResult).c_str(),
                 desc.category.c_str(),
                 desc.name.c_str());
-            //            }
         } else if (counterType == GL_FLOAT) {
             float counterResult = *(float *)(&counterData[wordCount + 2]);
 
@@ -374,7 +362,6 @@ CounterDescription QCOMCounters::GetCounterDescription(GPUCounter index) {
 }
 
 void QCOMCounters::EnableCounter(GPUCounter counter) {
-    FUN_INFO("Enable counter:%u", (uint32_t)counter);
     uint32_t id = (uint32_t)counter - (uint32_t)GPUCounter::FirstQCOM;
     m_EnabledCounters.push_back(id);
 }
