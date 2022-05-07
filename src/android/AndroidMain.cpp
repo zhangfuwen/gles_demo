@@ -7,6 +7,7 @@
 #include "Android.h"
 #include "arm_counters.h"
 #include <android/log.h>
+#include <fstream>
 
 #if NATIVE_APP
 #include <android/native_activity.h>
@@ -144,8 +145,8 @@ int main() {
             clock_gettime(CLOCK_MONOTONIC, &t1);
 
             //******* glCear *****//
-            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
+//            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+//            glClear(GL_COLOR_BUFFER_BIT);
             if (auto ret = gles.Draw(); ret < 0) {
                 LOGE("draw failed");
                 gles.Finish();
@@ -171,9 +172,15 @@ int main() {
     auto cs = counters.GetPublicCounterIds();
     for (auto &c : cs) {
         auto desc = counters.GetCounterDescription(c);
-#if 0
+#if 1
         std::vector<std::string> criteria = {
-            "VBIF", "GBIF", "UCHE", "AXI", "TP", "SP"
+            "DATA_BEATS_TOTAL",
+//            "SP",
+//            "VBIF", "GBIF", "UCHE", "AXI", "TP", "SP"
+//            "LRZ_LRZ",
+//            "LRZ_STALL_CYCLES_UCHE"
+//            "LRZ_STALL_CYCLES_RB"
+//            "LRZ_STALL_CYCLES_VC"
         };
         if(string_contains_any(desc.name, criteria)
             || string_contains_any(desc.category, criteria)
@@ -188,9 +195,7 @@ int main() {
 #endif
     }
 
-    LOGI("start");
     counters.BeginPass();
-    LOGI("start");
 
     //    counters.BeginSample(0);
     //    LOGI("start");
@@ -201,35 +206,40 @@ int main() {
 
     counters.BeginSample(1);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    LOGI("on offscreen");
+    LOG_BANNER("offscreen");
     render(500);
     counters.EndSample();
 
     counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());
-    LOGI("on ahardwarebuffer");
+    LOG_BANNER("on ahardwarebuffer");
     render(500);
     counters.EndSample();
 
     counters.BeginSample(3);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex.value());
-    LOGI("on texture");
+    LOG_BANNER("on texture");
     render(500);
     counters.EndSample();
 
-#if 0
-    for(int i = 0; i<=3; i++) {
-        auto res = counters.GetCounterData({(unsigned)i} );
-        if(i==0) {
+#if 1
+    std::ofstream f1;
+    f1.open("/data/diff.csv");
+    for(int i = 1; i<=3; i++) {
+        auto res = counters.GetCounterResult(i);
+        if(i==1) {
             for(auto c : res) {
-                LOGI("%s,", counters.GetCounterDescription(c.counter).name.c_str());
+                f1 << counters.GetCounterDescription(c.counter).name << ", ";
             }
+            f1 << "\n";
         }
         for(auto c : res) {
-            LOGI("%d,", c.value.u32);
+            f1 << hr(c.value.u32) << ", ";
         }
+        f1 << "\n";
 
     }
+    f1.close();
 #endif
 
     int res = 0;

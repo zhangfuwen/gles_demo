@@ -44,7 +44,7 @@ int EGL::Init(int width, int height, EGLNativeWindowType win /* = nullptr */) {
         LOGE("some config is wrong");
         return -1;
     } else {
-        LOGI("all configs are OK");
+        LOGD("all configs are OK");
     }
 
     // create PbufferSurface

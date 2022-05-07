@@ -25,7 +25,7 @@
 #include "arm_counters.h"
 
 #include <dlfcn.h>
-#include <handycpp/logging.h>
+#include "../common/common.h"
 
 //#define FUN_INFO(fmt, ...)                                                                                             \
 //    printf(fmt "\n", ##__VA_ARGS__);                                                                                   \
@@ -143,7 +143,7 @@ void QCOMCounters::GetGroupAndCounterList(GLuint **groupsList, int *numGroups, C
 }
 
 bool QCOMCounters::Init() {
-    FUN_INFO("QCOMCounters::Init");
+    LOGD("QCOMCounters::Init");
     glGenPerfMonitorsAMD = (pfnGLGenPerfMonitorsAMD)eglGetProcAddress("glGenPerfMonitorsAMD");
     glSelectPerfMonitorCountersAMD =
         (pfnGLSelectPerfMonitorCountersAMD)eglGetProcAddress("glSelectPerfMonitorCountersAMD");
@@ -167,12 +167,12 @@ bool QCOMCounters::Init() {
         glDeletePerfMonitorsAMD == nullptr || glGetPerfMonitorCounterStringAMD == nullptr ||
         glGetPerfMonitorGroupStringAMD == nullptr || glGetPerfMonitorGroupsAMD == nullptr ||
         glGetPerfMonitorCountersAMD == nullptr) {
-        FUN_WARN("QCOM Counter init failed");
+        LOGE("QCOM Counter init failed");
         return false;
     }
 
     GetGroupAndCounterList(&m_groups, &m_numGroups, &m_counters);
-    FUN_INFO("QCOMCounter init success");
+    LOGI("QCOMCounter init success");
     return true;
 }
 
@@ -181,7 +181,7 @@ void QCOMCounters::BeginPass(uint32_t passID) {
     // create perf monitor ID
     glGenPerfMonitorsAMD(1, &m_monitor);
     if (auto err = glGetError(); err != GL_NO_ERROR) {
-        FUN_WARN("failed to GenPerfMonitors");
+        LOGW("failed to GenPerfMonitors");
     }
     m_EnabledCountersSupported.resize(m_EnabledCounters.size());
 
@@ -215,7 +215,7 @@ void QCOMCounters::EndPass() {
 }
 
 void QCOMCounters::BeginSample(uint32_t eventId) {
-    FUN_INFO("BeginSample, eventId:%u", eventId);
+    LOGD("BeginSample, eventId:%u", eventId);
     m_EventId = eventId;
     glBeginPerfMonitorAMD(m_monitor);
 }
@@ -251,31 +251,11 @@ uint32_t QCOMCounters::GetCounterId(uint32_t groupId, uint32_t counterId) {
     return -1;
 }
 
-std::string to_string_2(double x) {
-    char a[20];
-    sprintf(a, "%.2f", x);
-    return a;
-}
-
-std::string hr(uint64_t val) { // human readable
-    if (val / 1000000000 != 0) {
-        auto ret = double(val) / 1000000000;
-        return to_string_2(ret) + " G";
-    } else if (val / 1000000 != 0) {
-        auto ret = double(val) / 1000000;
-        return to_string_2(ret) + " M";
-    } else if (val / 1000 != 0) {
-        auto ret = double(val) / 1000;
-        return to_string_2(ret) + " M";
-    } else {
-        return to_string(val);
-    }
-}
 
 void QCOMCounters::ReadData() {
     auto enabledCount =
         std::count_if(m_EnabledCountersSupported.begin(), m_EnabledCountersSupported.end(), [](bool v) { return v; });
-    FUN_INFO("total enable: %d", enabledCount);
+    LOGD("total enable: %d", enabledCount);
 
     std::vector<GPUCounter> cs;
     for (int i = 0; i < m_EnabledCounters.size(); i++) {
@@ -296,13 +276,13 @@ void QCOMCounters::ReadData() {
     GLuint resultSize = 0;
     glGetPerfMonitorCounterDataAMD(m_monitor, eGL_PERFMON_RESULT_SIZE_AMD, sizeof(GLint), &resultSize, NULL);
 
-    FUN_INFO("resultSize = %u", resultSize);
+    LOGD("resultSize = %u", resultSize);
     counterData = (GLuint *)malloc(resultSize);
 
     GLsizei bytesWritten;
     glGetPerfMonitorCounterDataAMD(m_monitor, eGL_PERFMON_RESULT_AMD, resultSize, counterData, &bytesWritten);
 
-    FUN_INFO("bytesWritten = %d", bytesWritten);
+    LOGD("bytesWritten = %d", bytesWritten);
     // display or log counter info
     GLsizei wordCount = 0;
     int tmpI = 0;
@@ -326,24 +306,24 @@ void QCOMCounters::ReadData() {
             m_CounterData[m_EventId][internalCounterId] = data;
             //            if (m_EnabledCountersSupported[internalCounterId]) {
             auto desc = GetCounterDescription(cs[tmpI]);
-            FUN_INFO(
-                "group:%u, counter:%u, counterResult[%d] = %s  (64bit) %s:%s",
-                groupId,
-                counterId,
-                tmpI,
-                hr(counterResult).c_str(),
-                desc.category.c_str(),
-                desc.name.c_str());
+//            FUN_INFO(
+//                "group:%u, counter:%u, counterResult[%d] = %s  (64bit) %s:%s",
+//                groupId,
+//                counterId,
+//                tmpI,
+//                hr(counterResult).c_str(),
+//                desc.category.c_str(),
+//                desc.name.c_str());
         } else if (counterType == GL_FLOAT) {
             float counterResult = *(float *)(&counterData[wordCount + 2]);
 
             // Print counter result
             wordCount += 3;
             //            if (m_EnabledCountersSupported[internalCounterId]) {
-            FUN_INFO("counterResult[%d] = %f   (float)", tmpI, counterResult);
+            LOGD("counterResult[%d] = %f   (float)", tmpI, counterResult);
             //            }
         } else {
-            FUN_INFO("unkonw counter type %04x", counterType);
+            LOGE("unkonw counter type %04x", counterType);
         }
         tmpI++;
     }
@@ -367,6 +347,26 @@ void QCOMCounters::EnableCounter(GPUCounter counter) {
 }
 
 void QCOMCounters::DisableAllCounters() { m_EnabledCounters.clear(); }
+
+rdcarray<CounterResult> QCOMCounters::GetCounterResult(uint32_t eventId) {
+    rdcarray<CounterResult> ret;
+    for(int i = 0; i < m_EnabledCounters.size(); i++) {
+        LOGD("--%d--", i);
+        if(m_EnabledCountersSupported[i]) {
+            auto counterId = m_EnabledCounters[i];
+            auto counter = counterId + (uint32_t)GPUCounter::FirstQCOM;
+            LOGD("counter:%u, counterId:%u", counter, counterId);
+            const CounterDescription &desc = GetCounterDescription((GPUCounter)counter);
+            const CounterValue &data = m_CounterData[eventId][counterId];
+            if (desc.resultType == CompType::UInt) {
+                ret.push_back(CounterResult(eventId, static_cast<GPUCounter>(counter), data.u64));
+            } else if (desc.resultType == CompType::Float) {
+                ret.push_back(CounterResult(eventId, static_cast<GPUCounter>(counter), data.d));
+            }
+        }
+    }
+    return ret;
+}
 
 rdcarray<CounterResult>
 QCOMCounters::GetCounterData(const rdcarray<uint32_t> &eventIDs, const rdcarray<GPUCounter> &counters1) {

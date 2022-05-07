@@ -289,6 +289,7 @@ public:
 
   rdcarray<CounterResult> GetCounterData(const rdcarray<uint32_t> &eventIDs,
                                          const rdcarray<GPUCounter> &counters = {});
+  rdcarray<CounterResult> GetCounterResult(uint32_t eventId);
 
 private:
   void GetGroupAndCounterList(GLuint **groupsList, int *numGroups,
@@ -299,8 +300,14 @@ private:
   uint32_t m_EventId;
   uint32_t m_passIndex;
 
+  /**
+   * 用户想要使用的计数器列表，每个条目是一个减少FirstQCom之后的偏移
+   * 只代表用户想要采集这些数据，但是select时可能会失败，所以不是每个条目都有数据的，有没有数据要根据
+   * m_EnabledCountersSupported来看。两者是同样大小的数组
+   */
   rdcarray<uint32_t> m_EnabledCounters;
     rdcarray<bool> m_EnabledCountersSupported;
+
   rdcarray<CounterDescription> m_CounterDescriptions;
   rdcarray<GPUCounter> m_CounterIds;
   std::map<uint32_t, std::map<uint32_t, CounterValue>> m_CounterData;

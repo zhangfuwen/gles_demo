@@ -64,19 +64,19 @@ int GLES::ReadPixels(const char *filePath, GLuint fbo, GLenum src, int width, in
 std::optional<GLuint> GLES::CompileShader(GLenum type, const char *source) {
     GLint shaderLen = strlen(source);
 
-    LOGI("compiling shader, type:%d, sourceLen:%d, source:%s", type, shaderLen, source);
+    LOGD("compiling shader, type:%d, sourceLen:%d, source:%s", type, shaderLen, source);
 
     auto shader = glCreateShader(type);
     GL_CHECK_ERROR_RET({}, "failed to create shader, type:%d, source:%s", type, source);
-    LOGI("created shader %d", shader);
+    LOGD("created shader %d", shader);
 
     glShaderSource(shader, 1, (const GLchar *const *)(&source), &shaderLen);
     GL_CHECK_ERROR_RET({}, "failed to attach shader source, shader:%d, source:%s", shader, source);
-    LOGI("set shader source");
+    LOGD("set shader source");
 
     glCompileShader(shader);
     //        GL_CHECK_ERROR_RET(-1, "failed to compile shader %d, source:%s", shader, source);
-    LOGI("compiled shader source");
+    LOGD("compiled shader source");
 
     GLint isCompiled = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
@@ -92,7 +92,7 @@ std::optional<GLuint> GLES::CompileShader(GLenum type, const char *source) {
         return -1;
     }
 
-    LOGI("compile ok");
+    LOGD("compile ok");
     return shader;
 }
 
@@ -142,7 +142,7 @@ std::optional<GLuint> GLES::LinkProgram(const char *vsSource, const char *fsSour
         LOGE("glLinkProgram failed, error log: %s", errorLog.data());
         return {};
     }
-    LOGI("linked program %d", program);
+    LOGD("linked program %d", program);
     return program;
 }
 
