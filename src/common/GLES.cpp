@@ -181,6 +181,10 @@ GLES::CreateFBO(int width, int height, bool withDepthStencil /* = false */, GLui
     } else {
         glGenTextures(1, &colorTex);
         glBindTexture(GL_TEXTURE_2D, colorTex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_OPTIMAL_TILING_EXT);
+        if(auto err = glGetError(); err != GL_NO_ERROR) {
+            LOGE("failed to set gl tiling type");
+        }
         defer dt([]() { glBindTexture(GL_TEXTURE_2D, 0); });
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -320,6 +324,38 @@ std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd) 
 //    GL_CHECK_ERROR_RET({}, "");
 
     return tex;
+}
+
+void GLES::PrintTextureInfo(GLuint tex) {
+    glBindTexture(GL_TEXTURE_2D, tex);
+    defer dt([]() {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    });
+    GLint ret;
+    glGetTexParameteriv(GL_TEXTURE_2D,GL_TEXTURE_IMMUTABLE_FORMAT, &ret);
+    if(ret == GL_FALSE) {
+        LOGI("texture is mutable");
+    } else {
+        LOGI("texture is immutable");
+    }
+
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, &ret);
+    if(ret == GL_OPTIMAL_TILING_EXT) {
+        LOGI("tiling optimal");
+    } else if(ret == GL_LINEAR_TILING_EXT) {
+        LOGI("tiling linear");
+    } else {
+        LOGI("tiling unknown %x", ret);
+    }
+
+    GLint width = 0;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    if (width > 0) {
+        LOGI("texture has storeage");
+    } else {
+        LOGI("texture has no storage");
+    }
+
 }
 #if 0
 void drawBunny() {

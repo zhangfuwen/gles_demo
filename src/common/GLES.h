@@ -40,7 +40,7 @@ inline const char *glErrString(GLenum error) {
     do {                                                                                                               \
         auto err = glGetError();                                                                                       \
         if (err != GL_NO_ERROR) {                                                                                      \
-            LOGE("l%s, " fmt, glErrString(err), ##__VA_ARGS__);                                      \
+            LOGE("%s, " fmt, glErrString(err), ##__VA_ARGS__);                                      \
         }                                                                                                              \
     } while (0)
 
@@ -113,6 +113,8 @@ public:
     static int ReadPixels(const char *filePath, GLuint fbo = 0, GLenum src = GL_BACK, int width = 0, int height = 0);
     static int GetFramebufferInfo(bool read = true);
     static std::optional<GLuint> CreateTextureFromFd(int w, int h, int size, int fd);
+
+    static void PrintTextureInfo(GLuint tex);
 
 
 };

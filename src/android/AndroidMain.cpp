@@ -43,9 +43,11 @@ int main() {
     if (!fboTex) {
         return -1;
     }
+    GLES::PrintTextureInfo(fboTex.value());
     defer dfbo([fboTex]() { glDeleteFramebuffers(1, &fboTex.value()); });
 
     auto buffer = new AndroidAHardwareBuffer(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT);
+    GLES::PrintTextureInfo(buffer->GetID());
     auto fboAndroid = GLES::CreateFBO(VIEW_PORT_WIDTH, VIEW_PORT_HEIGHT, false, buffer->GetID());
     if (!fboAndroid) {
         return -1;
@@ -63,6 +65,7 @@ int main() {
             //******* glCear *****//
 //            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 //            glClear(GL_COLOR_BUFFER_BIT);
+//            glHint(GL_BINNING_CONTROL_HINT_QCOM, GL_RENDER_DIRECT_TO_FRAMEBUFFER_QCOM);
             if (auto ret = gles.Draw(); ret < 0) {
                 LOGE("draw failed");
                 gles.Finish();
@@ -112,7 +115,7 @@ int main() {
 #endif
     }
 
-    counters.BeginPass();
+//    counters.BeginPass();
 
     //    counters.BeginSample(0);
     //    LOGI("start");
@@ -121,25 +124,25 @@ int main() {
     //    render(5000);
     //    counters.EndSample();
 
-    counters.BeginSample(1);
+//    counters.BeginSample(1);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     LOG_BANNER("offscreen");
     render(500);
-    counters.EndSample();
+//    counters.EndSample();
 
-    counters.BeginSample(2);
+//    counters.BeginSample(2);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboAndroid.value());
     LOG_BANNER("on ahardwarebuffer");
     render(500);
-    counters.EndSample();
+//    counters.EndSample();
 
-    counters.BeginSample(3);
+//    counters.BeginSample(3);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex.value());
     LOG_BANNER("on texture");
     render(500);
-    counters.EndSample();
+//    counters.EndSample();
 
-#if 1
+#if 0
     std::ofstream f1;
     f1.open("/data/diff.csv");
     for(int i = 1; i<=3; i++) {
