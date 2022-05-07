@@ -32,46 +32,26 @@ public:
                     if (auto ret = m_vulkan.Init(); ret < 0) {
                         LOGI("failed to init vulkan");
                     }
-                    int size;
+                    int size = 0;
                     m_fd = m_vulkan.CreateMemObjFd(w, h, &size);
                     LOGI("m_fd is %d", m_fd);
                     auto tex = GLES::CreateTextureFromFd(w, h, size, m_fd);
-                    {
-                        glBindTexture(GL_TEXTURE_2D, tex.value());
-                        GLint ret;
-                        glGetTexParameteriv(GL_TEXTURE_2D,GL_TEXTURE_IMMUTABLE_FORMAT, &ret);
-                        if(ret == GL_FALSE) {
-                            LOGI("texture is mutable");
-                        } else {
-                            LOGI("texture is immutable");
-                        }
-
-                        glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, &ret);
-                        if(ret == GL_OPTIMAL_TILING_EXT) {
-                            LOGI("tiling optimal");
-                        } else if(ret == GL_LINEAR_TILING_EXT) {
-                            LOGI("tiling linear");
-                        } else {
-                            LOGI("tiling unknown %x", ret);
-                        }
-
-                        GLint width = 0;
-                        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-                        if (width > 0) {
-                            LOGI("texture has storeage");
-                        } else {
-                            LOGI("texture has no storage");
-                        }
-
-
-
-                    }
+                    GLES::PrintTextureInfo(tex.value());
                     if (auto ret = GLES::CreateFBO(w, h, false, tex.value()); ret.has_value()) {
-                        m_fbo = ret.value();
+                        m_fboMemObj = ret.value();
                     } else {
                         LOGE("m_fd:%d, tex:%d, w:%d, h:%d, size:%d", m_fd, tex, w, h, size);
                         exit(-1);
                     }
+                    auto buffer = new AndroidAHardwareBuffer(w, h);
+                    auto ret = GLES::CreateFBO(w, h, false, buffer->GetID());
+                    if(ret.has_value()) {
+                        m_fboAhardwareBuffer = ret.value();
+                    } else {
+                        LOGE("failed to create fbo");
+                        exit(-1);
+                    }
+
                 }
 
             } break;
@@ -101,12 +81,19 @@ public:
 //            }).print_time_ms("onscreen");
 
             measure_time([&]() {
-              glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+              glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fboMemObj);
               glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
               glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
               m_gles.Draw();
               glFinish();
-            }).print_time_ms(string_format("fbo %d", m_fbo));
+            }).print_time_us(string_format("fboMemObj %d", m_fboMemObj));
+            measure_time([&]() {
+              glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fboAhardwareBuffer);
+              glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+              glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+              m_gles.Draw();
+              glFinish();
+            }).print_time_us(string_format("fboAhardwarebuffer %d", m_fboAhardwareBuffer));
 
             m_vulkan.Draw();
             eglSwapBuffers(eglGetCurrentDisplay(), m_egl.GetSurface());
@@ -121,7 +108,8 @@ private:
     GLES m_gles{};
     Vulkan m_vulkan{};
     int m_fd;
-    GLuint m_fbo = 0;
+    GLuint m_fboMemObj = 0;
+    GLuint m_fboAhardwareBuffer = 0;
 };
 void android_main_override(struct android_app *state) {
     if (state == nullptr) {

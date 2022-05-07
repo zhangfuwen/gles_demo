@@ -107,6 +107,6 @@ private:
     macro(glCreateMemoryObjectsEXT); \
     macro(glMemoryObjectParameterivEXT); \
     macro(glImportMemoryFdEXT);   \
-    macro(glTextureStorageMem2DEXT)
+    macro(glTexStorageMem2DEXT)
 
 LIST_GLES_POINTERS(DEF_GLES_FUNC_POINTER);

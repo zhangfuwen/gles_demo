@@ -129,6 +129,7 @@ if (VCPKG_TOOLCHAIN MATCHES ON)
         target_include_directories(gputop PRIVATE ${HAPPLY_INCLUDE_DIRS})
     endif ()
 else ()
+    message("not having vcpkg")
     ExternalProject_Add(handycpp
             GIT_REPOSITORY https://github.com/zhangfuwen/handycpp
             GIT_TAG main

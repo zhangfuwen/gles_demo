@@ -301,8 +301,8 @@ std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd) 
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_LINEAR_TILING_EXT);
     GL_CHECK_ERROR_RET({}, "");
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    GL_CHECK_ERROR_RET({}, "");
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+//    GL_CHECK_ERROR_RET({}, "");
 
     // create a memory object and import from fd
     GLuint memObj;
@@ -311,14 +311,14 @@ std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd) 
 
     LOGE("memobj %u, size :%d", memObj,size);
 
-    GLint dedicated = GL_TRUE;
+    GLint dedicated = GL_FALSE;
     pfnglMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
     GL_CHECK_ERROR_RET({}, "");
     pfnglImportMemoryFdEXT(memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd);
     GL_CHECK_ERROR_RET({}, "");
 
     // attach memory object to texture
-    pfnglTextureStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, memObj, 0);
+    pfnglTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, memObj, 0);
     GL_CHECK_ERROR_RET({}, "");
 //    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
 //    GL_CHECK_ERROR_RET({}, "");
