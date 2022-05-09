@@ -9,8 +9,8 @@
 #include <vector>
 #include <android/log.h>
 
-//#define FUN_PRINT(fmt, ...) printf(fmt"\n", ##__VA_ARGS__); fflush(stdout)
-#define FUN_PRINT(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native_app", __VA_ARGS__))
+#define FUN_PRINT(fmt, ...) printf(fmt"\n", ##__VA_ARGS__); fflush(stdout)
+//#define FUN_PRINT(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native_app", __VA_ARGS__))
 #include "handycpp/logging.h"
 
 #ifndef FUN_INFO
@@ -30,7 +30,7 @@
 #define LOGD(...)
 #endif
 
-#define LOG_BANNER(fmt, ...) LOGI("###################### " fmt "###################", ##__VA_ARGS__)
+#define LOG_BANNER(fmt, ...) LOGI("###################### " fmt " ###################", ##__VA_ARGS__)
 
 #define LOG_TAG "offscreen"
 //#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)

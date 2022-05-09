@@ -46,10 +46,8 @@ AndroidAHardwareBuffer::AndroidAHardwareBuffer(int width, int height) {
 
     glGenTextures(1, &m_tex);
     glBindTexture(GL_TEXTURE_2D, m_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_LINEAR_TILING_EXT);
-    if(auto err = glGetError(); err != GL_NO_ERROR) {
-        LOGE("failed to set gl tiling type");
-    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_OPTIMAL_TILING_EXT);
+    GL_CHECK_ERROR();
 
 
     EGLClientBuffer native_buffer = eglGetNativeClientBufferANDROID(m_aHardwareBuffer);

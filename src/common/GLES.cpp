@@ -6,10 +6,10 @@
 #include "GLES.h"
 #include "EGL.h"
 
+#include "common.h"
 #include "handycpp/file.h"
 #include "handycpp/image.h"
 #include "happly.h"
-#include "common.h"
 
 /**
  * ReadPixels from framebuffer to a png file
@@ -182,7 +182,7 @@ GLES::CreateFBO(int width, int height, bool withDepthStencil /* = false */, GLui
         glGenTextures(1, &colorTex);
         glBindTexture(GL_TEXTURE_2D, colorTex);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_OPTIMAL_TILING_EXT);
-        if(auto err = glGetError(); err != GL_NO_ERROR) {
+        if (auto err = glGetError(); err != GL_NO_ERROR) {
             LOGE("failed to set gl tiling type");
         }
         defer dt([]() { glBindTexture(GL_TEXTURE_2D, 0); });
@@ -294,55 +294,67 @@ int GLES::Draw() const {
     return 0;
 }
 
-std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd) {
-    // create a texture object
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_LINEAR_TILING_EXT);
-    GL_CHECK_ERROR_RET({}, "");
-//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-//    GL_CHECK_ERROR_RET({}, "");
+std::optional<GLuint> GLES::CreateTextureFromFd(int w, int h, int size, int fd, bool mutableTex /* = false */) {
+    if (!mutableTex) {
 
-    // create a memory object and import from fd
-    GLuint memObj;
-    pfnglCreateMemoryObjectsEXT(1, &memObj);
-    GL_CHECK_ERROR_RET({}, "");
+        // create a texture object
+        GLuint tex;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_LINEAR_TILING_EXT);
+        GL_CHECK_ERROR_RET({}, "");
+        //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        //    GL_CHECK_ERROR_RET({}, "");
 
-    LOGE("memobj %u, size :%d", memObj,size);
+        // create a memory object and import from fd
+        GLuint memObj;
+        pfnglCreateMemoryObjectsEXT(1, &memObj);
+        GL_CHECK_ERROR_RET({}, "");
 
-    GLint dedicated = GL_FALSE;
-    pfnglMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-    GL_CHECK_ERROR_RET({}, "");
-    pfnglImportMemoryFdEXT(memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd);
-    GL_CHECK_ERROR_RET({}, "");
+        LOGE("memobj %u, size :%d", memObj, size);
 
-    // attach memory object to texture
-    pfnglTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, memObj, 0);
-    GL_CHECK_ERROR_RET({}, "");
-//    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
-//    GL_CHECK_ERROR_RET({}, "");
+        GLint dedicated = GL_FALSE;
+        pfnglMemoryObjectParameterivEXT(memObj, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+        GL_CHECK_ERROR_RET({}, "");
+        pfnglImportMemoryFdEXT(memObj, size, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd);
+        GL_CHECK_ERROR_RET({}, "");
 
-    return tex;
+        // attach memory object to texture
+        pfnglTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, w, h, memObj, 0);
+        GL_CHECK_ERROR_RET({}, "");
+        //    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, w, h);
+        //    GL_CHECK_ERROR_RET({}, "");
+        return tex;
+    } else {
+        GLuint tex;
+        return tex;
+    }
 }
 
 void GLES::PrintTextureInfo(GLuint tex) {
     glBindTexture(GL_TEXTURE_2D, tex);
-    defer dt([]() {
-        glBindTexture(GL_TEXTURE_2D, 0);
-    });
+    defer dt([]() { glBindTexture(GL_TEXTURE_2D, 0); });
     GLint ret;
-    glGetTexParameteriv(GL_TEXTURE_2D,GL_TEXTURE_IMMUTABLE_FORMAT, &ret);
-    if(ret == GL_FALSE) {
+    glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &ret);
+    if (ret == GL_FALSE) {
         LOGI("texture is mutable");
     } else {
         LOGI("texture is immutable");
     }
+    //    glGetInternalformativ(GL_TEXTURE_2D, GL_RGBA8, GL_TILING_TYPES_EXT, 1, &ret);
+    //    GL_CHECK_ERROR();
+    //    if(ret == GL_OPTIMAL_TILING_EXT) {
+    //            LOGI("internalformat for rgba tiling optimal");
+    //    } else if(ret == GL_LINEAR_TILING_EXT) {
+    //            LOGI("tiling linear");
+    //    } else {
+    //            LOGI("tiling unknown %x", ret);
+    //    }
 
     glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, &ret);
-    if(ret == GL_OPTIMAL_TILING_EXT) {
+    if (ret == GL_OPTIMAL_TILING_EXT) {
         LOGI("tiling optimal");
-    } else if(ret == GL_LINEAR_TILING_EXT) {
+    } else if (ret == GL_LINEAR_TILING_EXT) {
         LOGI("tiling linear");
     } else {
         LOGI("tiling unknown %x", ret);
@@ -355,7 +367,6 @@ void GLES::PrintTextureInfo(GLuint tex) {
     } else {
         LOGI("texture has no storage");
     }
-
 }
 #if 0
 void drawBunny() {

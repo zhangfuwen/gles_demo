@@ -6,6 +6,7 @@
 #include "../common/common.h"
 #include "Android.h"
 #include "arm_counters.h"
+#include "../common/Vulkan.h"
 #include <android/log.h>
 #include <fstream>
 
@@ -26,6 +27,8 @@ bool string_contains_any(std::string s, std::vector<std::string> substrs) {
 int main() {
     int width = VIEW_PORT_WIDTH;
     int height = VIEW_PORT_HEIGHT;
+    int w = width;
+    int h = height;
     EGL offscreen{};
     if (auto x = offscreen.Init(width, height); x < 0) {
         return -1;
@@ -53,6 +56,24 @@ int main() {
         return -1;
     }
     defer dfbo1([fboAndroid]() { glDeleteFramebuffers(1, &fboAndroid.value()); });
+
+    int fd;
+    Vulkan m_vulkan{};
+    GLuint m_fboMemObj;
+    if (auto ret = m_vulkan.Init(); ret < 0) {
+        LOGI("failed to init vulkan");
+    }
+    int size = 0;
+    fd = m_vulkan.CreateMemObjFd(w, h, &size);
+    LOGI("m_fd is %d", fd);
+    auto tex = GLES::CreateTextureFromFd(w, h, size, fd);
+    GLES::PrintTextureInfo(tex.value());
+    if (auto ret = GLES::CreateFBO(w, h, false, tex.value()); ret.has_value()) {
+        m_fboMemObj = ret.value();
+    } else {
+        LOGE("m_fd:%d, tex:%d, w:%d, h:%d, size:%d", fd, tex, w, h, size);
+        exit(-1);
+    }
 
     auto render = [&gles, &offscreen](int num_frames = 1000) {
         glFinish();
@@ -135,6 +156,9 @@ int main() {
     LOG_BANNER("on ahardwarebuffer");
     render(500);
 //    counters.EndSample();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fboMemObj);
+    LOG_BANNER("on memobj");
+    render(500);
 
 //    counters.BeginSample(3);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboTex.value());

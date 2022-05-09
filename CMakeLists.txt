@@ -42,6 +42,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
             src/common/EGL.cpp
             src/common/GLES.cpp
             src/android/Android.cpp
+            src/common/Vulkan.cpp
             src/android/AndroidMain.cpp
             src/android/arm_counters.cpp)
     target_compile_options(android_offscreen_test PRIVATE -std=c++17)
@@ -49,6 +50,7 @@ if (CMAKE_SYSTEM_NAME MATCHES Android)
             EGL
             GLESv2
             GLESv3
+            vulkan
             android
             jnigraphics
             native_app_glue

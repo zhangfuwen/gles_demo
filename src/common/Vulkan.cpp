@@ -133,7 +133,6 @@ bool Vulkan::GetMemoryTypeFromProperties(uint32_t typeBits, VkFlags requirements
  */
 int Vulkan::CreateMemObjFd(int w, int h, int *size) {
     VkImage vkImage;
-    VkDeviceMemory vkDeviceMemory;
     VkDeviceSize vkDeviceSize;
     bool useDedicatedAlloc;
 
@@ -283,8 +282,8 @@ int Vulkan::CreateMemObjFd(int w, int h, int *size) {
         *size = vkMemoryRequirements.size;
     }
 
-    vkDestroyImage(m_vkDevice, vkImage, nullptr);
-    vkFreeMemory(m_vkDevice, vkDeviceMemory, nullptr);
+//    vkDestroyImage(m_vkDevice, vkImage, nullptr);
+//    vkFreeMemory(m_vkDevice, vkDeviceMemory, nullptr);
     return fd;
 }
 
@@ -322,4 +321,18 @@ int Vulkan::CheckVkPointers() {
     }
 #undef CHECK_POINTER
     return 0;
+}
+
+AHardwareBuffer * Vulkan::ToBuffer() {
+    VkMemoryGetAndroidHardwareBufferInfoANDROID info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
+        .pNext = nullptr,
+        .memory = vkDeviceMemory,
+    };
+    AHardwareBuffer * buffer;
+    auto ret = pfnVkGetMemoryAndroidHardwareBufferANDROID(m_vkDevice, &info, &buffer);
+    if(ret != VK_SUCCESS) {
+        LOGE("error %d", ret);
+    }
+    return buffer;
 }

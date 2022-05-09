@@ -112,7 +112,7 @@ public:
     static std::optional<GLuint> CreateFBO(int width, int height, bool withDepthStencil = false, GLuint tex = 0);
     static int ReadPixels(const char *filePath, GLuint fbo = 0, GLenum src = GL_BACK, int width = 0, int height = 0);
     static int GetFramebufferInfo(bool read = true);
-    static std::optional<GLuint> CreateTextureFromFd(int w, int h, int size, int fd);
+    static std::optional<GLuint> CreateTextureFromFd(int w, int h, int size, int fd, bool mutableTex = false);
 
     static void PrintTextureInfo(GLuint tex);
 
