@@ -9,10 +9,16 @@ int Vulkan::Init() {
 
     // create instance
     std::vector<const char *> instanceExtensions = {
+        "VK_EXT_debug_report",
+        "VK_EXT_swapchain_colorspace",
+        "VK_KHR_android_surface",
+        "VK_KHR_device_group_creation",
         "VK_KHR_external_fence_capabilities",
         "VK_KHR_external_memory_capabilities",
         "VK_KHR_external_semaphore_capabilities",
         "VK_KHR_get_physical_device_properties2",
+        "VK_KHR_get_surface_capabilities2",
+        "VK_KHR_surface",
     };
     // instance_extensions.push_back("VK_KHR_surface");
     // instance_extensions.push_back("VK_KHR_android_surface");
@@ -24,7 +30,7 @@ int Vulkan::Init() {
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName = "null",
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_MAKE_VERSION(1, 1, 0),
+        .apiVersion = VK_MAKE_VERSION(1, 3, 0),
     };
     VkInstanceCreateInfo instanceCreateInfo{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -73,7 +79,9 @@ int Vulkan::Init() {
         "VK_KHR_get_memory_requirements2",
         "VK_KHR_external_memory_fd",
         "VK_KHR_external_semaphore_fd",
+        "VK_KHR_image_format_list",
         "VK_KHR_external_fence_fd",
+        "VK_ANDROID_external_memory_android_hardware_buffer",
     };
     float queuePriorities = 0;
     VkDeviceQueueCreateInfo queueCreateInfo{
@@ -84,6 +92,7 @@ int Vulkan::Init() {
         .queueCount = 1,
         .pQueuePriorities = &queuePriorities,
     };
+    m_vkQueueFamilyIndex = qFIndex;
     VkDeviceCreateInfo deviceCreateInfo{
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = nullptr,
@@ -106,13 +115,199 @@ int Vulkan::Init() {
         m_vkQueue);
     return 0;
 }
+
+void Vulkan::CreateSwapChain(ANativeWindow *aNativeWindow) {
+    LOGI("->createSwapChain");
+    memset(&m_swapchain, 0, sizeof(m_swapchain));
+
+    VkAndroidSurfaceCreateInfoKHR createInfo{
+        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
+        .window = aNativeWindow  };
+
+    CALL_VK(vkCreateAndroidSurfaceKHR(m_vkInstance, &createInfo, nullptr,
+                                      &m_surface));
+    // **********************************************************
+    // Get the surface capabilities because:
+    //   - It contains the minimal and max length of the chain, we will need it
+    //   - It's necessary to query the supported surface format (R8G8B8A8 for
+    //   instance ...)
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_vkPhysicalDevice, m_surface,
+                                              &surfaceCapabilities);
+    // Query the list of supported surface format and choose one we like
+    uint32_t formatCount = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_vkPhysicalDevice, m_surface,
+                                         &formatCount, nullptr);
+    VkSurfaceFormatKHR* formats = new VkSurfaceFormatKHR[formatCount];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_vkPhysicalDevice, m_surface,
+                                         &formatCount, formats);
+    LOGI("Got %d formats", formatCount);
+
+    uint32_t chosenFormat;
+    for (chosenFormat = 0; chosenFormat < formatCount; chosenFormat++) {
+        if (formats[chosenFormat].format == VK_FORMAT_R8G8B8A8_UNORM) break;
+    }
+    assert(chosenFormat < formatCount);
+
+    m_swapchain.displaySize_ = surfaceCapabilities.currentExtent;
+    m_swapchain.displayFormat_ = formats[chosenFormat].format;
+
+    // **********************************************************
+    // Create a swap chain (here we choose the minimum available number of surface
+    // in the chain)
+    VkSwapchainCreateInfoKHR swapchainCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .surface = m_surface,
+        .minImageCount = surfaceCapabilities.minImageCount,
+        .imageFormat = formats[chosenFormat].format,
+        .imageColorSpace = formats[chosenFormat].colorSpace,
+        .imageExtent = surfaceCapabilities.currentExtent,
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 1,
+        .pQueueFamilyIndices = &m_vkQueueFamilyIndex,
+        .preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode = VK_PRESENT_MODE_FIFO_KHR,
+        .clipped = VK_FALSE,
+        .oldSwapchain = VK_NULL_HANDLE,
+    };
+    CALL_VK(vkCreateSwapchainKHR(m_vkDevice, &swapchainCreateInfo, nullptr,
+                                 &m_swapchain.swapchain_));
+
+    // Get the length of the created swap chain
+    CALL_VK(vkGetSwapchainImagesKHR(m_vkDevice, m_swapchain.swapchain_,
+                                    &m_swapchain.swapchainLength_, nullptr));
+    delete[] formats;
+    LOGI("<-createSwapChain");
+}
+
+int Vulkan::CreateRenderPass() {
+    // -----------------------------------------------------------------
+    // Create render pass
+    VkAttachmentDescription attachmentDescriptions{
+        .format = m_swapchain.displayFormat_,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    };
+
+    VkAttachmentReference colourReference = {
+        .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
+    VkSubpassDescription subpassDescription{
+        .flags = 0,
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = nullptr,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colourReference,
+        .pResolveAttachments = nullptr,
+        .pDepthStencilAttachment = nullptr,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = nullptr,
+    };
+    VkRenderPassCreateInfo renderPassCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .pNext = nullptr,
+        .attachmentCount = 1,
+        .pAttachments = &attachmentDescriptions,
+        .subpassCount = 1,
+        .pSubpasses = &subpassDescription,
+        .dependencyCount = 0,
+        .pDependencies = nullptr,
+    };
+    CALL_VK(vkCreateRenderPass(m_vkDevice, &renderPassCreateInfo, nullptr,
+                               &m_vkRenderPass));
+    return 0;
+}
+
+void Vulkan::CreateFrameBuffers(VkRenderPass& renderPass, VkImageView depthView ) {
+    // query display attachment to m_swapchain
+    uint32_t SwapchainImagesCount = 0;
+    CALL_VK(vkGetSwapchainImagesKHR(m_vkDevice, m_swapchain.swapchain_,
+                                    &SwapchainImagesCount, nullptr));
+    m_swapchain.displayImages_.resize(SwapchainImagesCount);
+    CALL_VK(vkGetSwapchainImagesKHR(m_vkDevice, m_swapchain.swapchain_,
+                                    &SwapchainImagesCount,
+                                    m_swapchain.displayImages_.data()));
+
+    // create image view for each m_swapchain image
+    m_swapchain.displayViews_.resize(SwapchainImagesCount);
+    for (uint32_t i = 0; i < SwapchainImagesCount; i++) {
+        VkImageViewCreateInfo viewCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .image = m_swapchain.displayImages_[i],
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = m_swapchain.displayFormat_,
+            .components =
+                {
+                    .r = VK_COMPONENT_SWIZZLE_R,
+                    .g = VK_COMPONENT_SWIZZLE_G,
+                    .b = VK_COMPONENT_SWIZZLE_B,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                },
+            .subresourceRange =
+                {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+        };
+        CALL_VK(vkCreateImageView(m_vkDevice, &viewCreateInfo, nullptr,
+                                  &m_swapchain.displayViews_[i]));
+    }
+
+    // create a framebuffer from each m_swapchain image
+    m_swapchain.framebuffers_.resize(m_swapchain.swapchainLength_);
+    for (uint32_t i = 0; i < m_swapchain.swapchainLength_; i++) {
+        VkImageView attachments[2] = {
+            m_swapchain.displayViews_[i], depthView,
+        };
+        VkFramebufferCreateInfo fbCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext = nullptr,
+            .renderPass = renderPass,
+            .attachmentCount = 1,  // 2 if using depth
+            .pAttachments = attachments,
+            .width = static_cast<uint32_t>(m_swapchain.displaySize_.width),
+            .height = static_cast<uint32_t>(m_swapchain.displaySize_.height),
+            .layers = 1,
+        };
+        fbCreateInfo.attachmentCount = (depthView == VK_NULL_HANDLE ? 1 : 2);
+
+        CALL_VK(vkCreateFramebuffer(m_vkDevice, &fbCreateInfo, nullptr,
+                                    &m_swapchain.framebuffers_[i]));
+    }
+}
+
+
+void Vulkan::DeleteSwapChain(void) {
+    for (int i = 0; i < m_swapchain.swapchainLength_; i++) {
+        vkDestroyFramebuffer(m_vkDevice, m_swapchain.framebuffers_[i], nullptr);
+        vkDestroyImageView(m_vkDevice, m_swapchain.displayViews_[i], nullptr);
+    }
+    vkDestroySwapchainKHR(m_vkDevice, m_swapchain.swapchain_, nullptr);
+}
 bool Vulkan::GetMemoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex) {
     VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
     vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevice, &physicalDeviceMemoryProperties);
     if (typeIndex == nullptr) {
         LOGE("GetMemoryTypeFromProperties typeIndex == nullptr");
     }
-    for (uint32_t i = 0; i < 32; i++) {
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; i++) {
         if ((typeBits & 1) == 1) {
             if ((physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
                 *typeIndex = i;
