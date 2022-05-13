@@ -22,5 +22,12 @@ function na_start()
 
 if [[ $# != 0 ]]
 then
+  if adb shell pm list packages | grep com.example.native_activity; then
+    echo "package already exists"
+  else
+    echo "package not exists, download and installing"
+    wget https://github.com/zhangfuwen/native_app/releases/download/v1.0.0/app-debug.apk
+    adb install app-debug.apk
+  fi
   na_start $1
 fi
